@@ -3684,7 +3684,7 @@
       (scale (xyz 1 1 1))
       (rotate (xyz 90 180 -90))
     )
-    (model "/Users/d66317d/Code/Boards/MazeController/c-5104340-01-b-3d.stp"
+    (model "../../c-5104340-01-b-3d.stp"
       (offset (xyz -9.525 -5.08 0))
       (scale (xyz 1 1 1))
       (rotate (xyz -90 0 90))
