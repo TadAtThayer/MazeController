@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "StockedComponents")(type "KiCad")(uri "/Users/d66317d/Code/Boards/Libraries/StockedComponents/StockedComponents.kicad_sym")(options "")(descr ""))
+)
