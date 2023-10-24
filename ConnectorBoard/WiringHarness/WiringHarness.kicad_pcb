@@ -1297,7 +1297,7 @@
 
   (footprint "QRCodeLibrary:v0.5wh" (layer "F.Cu")
     (tstamp 94d85eff-0974-4d46-8769-8683bfbd5c36)
-    (at 162 103)
+    (at 140.75 90.25)
     (attr board_only exclude_from_pos_files exclude_from_bom)
     (fp_text reference "G***" (at 0 0) (layer "F.SilkS") hide
         (effects (font (size 1.5 1.5) (thickness 0.3)))
@@ -4475,6 +4475,9 @@
     (stroke (width 0.1) (type default)) (layer "Edge.Cuts") (tstamp d254d6e8-8f86-46ec-b4e1-a528aa874d57))
   (gr_arc (start 127 78.75) (mid 127.87868 76.62868) (end 130 75.75)
     (stroke (width 0.1) (type default)) (layer "Edge.Cuts") (tstamp f95edf6c-1765-49aa-a646-7eaae26107de))
+  (gr_text "ENGS28 Maze Controller wiring harness\nV0.5wh - Tad Truex\nCopyright 2023, Dartmouth College\n" (at 165 96.5) (layer "B.SilkS") (tstamp cd391b2a-b063-49fe-9d1b-b34dc8a9c248)
+    (effects (font (size 1 1) (thickness 0.15)) (justify left bottom mirror))
+  )
   (gr_text "G" (at 148.5 106.25) (layer "F.SilkS") (tstamp 112dce4a-ed93-4570-a16f-60c2b2265d18)
     (effects (font (size 1 1) (thickness 0.15)) (justify left bottom))
   )
@@ -4599,9 +4602,6 @@
   )
   (gr_text "Input 6 - 12V" (at 140 97.75) (layer "F.SilkS") (tstamp ca3959fd-8647-4ce9-9bb7-170fa58058fb)
     (effects (font (size 0.9 0.9) (thickness 0.09)) (justify left bottom))
-  )
-  (gr_text "ENGS28 Maze Controller wiring harness\nV0.5wh - Tad Truex\nCopyright 2023, Dartmouth College\n" (at 130.25 91) (layer "F.SilkS") (tstamp cd391b2a-b063-49fe-9d1b-b34dc8a9c248)
-    (effects (font (size 1 1) (thickness 0.15)) (justify left bottom))
   )
   (gr_text "G" (at 173.75 93.75) (layer "F.SilkS") (tstamp e0685674-6f81-48fc-9060-b333b7ee4978)
     (effects (font (size 1 1) (thickness 0.15)) (justify left bottom))
