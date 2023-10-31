@@ -1,4 +1,6 @@
 (fp_lib_table
   (version 7)
   (lib (name "QRCodeLibrary")(type "KiCad")(uri "/Users/d66317d/Code/Boards/MazeController/QRCodeLibrary.pretty")(options "")(descr ""))
+  (lib (name "Passives")(type "KiCad")(uri "/Users/d66317d/Code/Boards/Libraries/Passives")(options "")(descr ""))
+  (lib (name "TexasInstruments")(type "KiCad")(uri "/Users/d66317d/Code/Boards/Libraries/TexasInstruments")(options "")(descr ""))
 )
