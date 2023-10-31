@@ -1,4 +1,4 @@
 (sym_lib_table
   (version 7)
-  (lib (name "Local")(type "KiCad")(uri "../Library/Local.kicad_sym")(options "")(descr ""))
+  (lib (name "Local")(type "KiCad")(uri "/Users/tad/Code/Boards/MazeController/Library/Local.kicad_sym")(options "")(descr ""))
 )
