@@ -2,4 +2,5 @@
   (version 7)
   (lib (name "Arduino_MountingHole")(type "KiCad")(uri "${KICAD7_TEMPLATE_DIR}/Arduino_Mega/Arduino_MountingHole.pretty")(options "")(descr ""))
   (lib (name "Footprints")(type "KiCad")(uri "/Users/d66317d/Code/Boards/MazeController/Footprints.pretty")(options "")(descr ""))
+  (lib (name "QRCodes")(type "KiCad")(uri "/Users/d66317d/Code/Boards/MazeController/QRCodeLibrary.pretty")(options "")(descr ""))
 )
