@@ -2113,7 +2113,7 @@
     (property "Value" "PCA9306DQER" (at 194.31 104.14 0)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "Package_SON:X2SON-8_1.4x1mm_P0.35mm" (at 189.23 110.49 0)
+    (property "Footprint" "Package_SO:TSSOP-8_3x3mm_P0.65mm" (at 189.23 110.49 0)
       (effects (font (size 1.27 1.27)) (justify bottom) hide)
     )
     (property "Datasheet" "" (at 189.23 120.65 0)
