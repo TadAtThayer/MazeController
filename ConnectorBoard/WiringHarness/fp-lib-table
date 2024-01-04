@@ -4,5 +4,5 @@
   (lib (name "Passives")(type "KiCad")(uri "$KIPRJMOD/../../../Libraries/Passives")(options "")(descr ""))
   (lib (name "TexasInstruments")(type "KiCad")(uri "$KIPRJMOD/../../../Libraries/TexasInstruments")(options "")(descr ""))
   (lib (name "DiodesInc")(type "KiCad")(uri "$KIPRJMOD/../../../Libraries/DiodesInc")(options "")(descr ""))
-  (lib (name "STMicro")(type "KiCad")(uri "/Users/tad/Code/Boards/Libraries/STMicro/STMicro.pretty")(options "")(descr ""))
+  (lib (name "STMicro")(type "KiCad")(uri "$KIPRJMOD/../../../Libraries/STMicro/STMicro.pretty")(options "")(descr ""))
 )
