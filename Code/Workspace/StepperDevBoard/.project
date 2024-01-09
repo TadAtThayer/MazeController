@@ -30,4 +30,11 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>Firmware</name>
+			<type>2</type>
+			<location>/Users/d66317d/Code/Boards/MazeController/Code/Firmware</location>
+		</link>
+	</linkedResources>
 </projectDescription>
