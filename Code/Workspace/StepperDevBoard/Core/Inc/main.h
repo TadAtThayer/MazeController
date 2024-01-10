@@ -76,6 +76,8 @@ void Error_Handler(void);
 #define Y0_2_GPIO_Port GPIOA
 #define Y1_1_Pin GPIO_PIN_7
 #define Y1_1_GPIO_Port GPIOA
+#define ClockOut_Pin GPIO_PIN_0
+#define ClockOut_GPIO_Port GPIOB
 #define Y0_1_Pin GPIO_PIN_8
 #define Y0_1_GPIO_Port GPIOA
 #define Y1_0_Pin GPIO_PIN_9

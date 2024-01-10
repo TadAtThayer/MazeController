@@ -208,11 +208,11 @@ static void MX_TIM14_Init(void)
 
   /* USER CODE END TIM14_Init 1 */
   htim14.Instance = TIM14;
-  htim14.Init.Prescaler = 48;
+  htim14.Init.Prescaler = 2;
   htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim14.Init.Period = 1000;
+  htim14.Init.Period = 48000-1;
   htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
   {
     Error_Handler();
@@ -248,7 +248,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, X_0_Pin|X_1_Pin|X_2_Pin|X_3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, ClockOut_Pin|X_0_Pin|X_1_Pin|X_2_Pin
+                          |X_3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : User_Button_Pin */
   GPIO_InitStruct.Pin = User_Button_Pin;
@@ -284,8 +285,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(Y1_2_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : X_0_Pin X_1_Pin X_2_Pin X_3_Pin */
-  GPIO_InitStruct.Pin = X_0_Pin|X_1_Pin|X_2_Pin|X_3_Pin;
+  /*Configure GPIO pins : ClockOut_Pin X_0_Pin X_1_Pin X_2_Pin
+                           X_3_Pin */
+  GPIO_InitStruct.Pin = ClockOut_Pin|X_0_Pin|X_1_Pin|X_2_Pin
+                          |X_3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
