@@ -51,8 +51,8 @@ private:
 	bool rdOdd() { return rdEntry & 0x1 ? true : false; }
 
 public :
-	bool isEmpty(){ return wrEntry == rdEntry; }
-	bool count(){ return (wrapped ? size : 0 ) + wrEntry - rdEntry; }
+	bool isEmpty(){ return count() == 0; }
+	unsigned int count(){ return (wrapped ? size : 0 ) + wrEntry - rdEntry; }
 	bool full(){ return count() == size; }
 
 
@@ -76,14 +76,14 @@ public :
 	}
 
 	// Pop the top element.
-	// Never allow the fifo to empty.  This way, we will supply
-	// holding torque as a default.
+	//  If we are empty, just return whatever is there.
+	//  Consumer must check full/empty status.
 	uint8_t pop() {
 		uint8_t val = *rdPtr();
 
 		// justify the actual bits
 		val = rdOdd() ? val >> 4 : val & 0x0f;
-		if ( rdEntry > wrEntry || wrEntry - rdEntry > 1  ) {
+		if ( count() > 0  ) {
 			// bump and wrap
 			rdEntry++;
 			if ( rdEntry == size ) wrapped = false;
@@ -98,20 +98,22 @@ public :
 MoveQueue xQueue;
 
 extern "C" void mazeMain(void){
-
-	xQueue.push(activeCoils[0]);
-
-	for ( unsigned i = 0; i < 2028; i++) {
-		xQueue.push(activeCoils[i&0x3]);
-	}
+	uint8_t quadrant = 0;
 
 	HAL_TIM_Base_Start_IT(&htim14);
 
+	HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_RESET);
+	HAL_Delay(1000);
+
 	while(1){
-		HAL_Delay(5000);
-		for ( unsigned i = 0; i < 2008; i++) {
+		for ( unsigned i = 0; i < 2032; i++) {
+			while(xQueue.full()){
+				HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_SET);
+			}
+			//HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_RESET);
 			xQueue.push(activeCoils[i&0x3]);
 		}
+		HAL_Delay(5000);
 	}
 
 }
@@ -125,14 +127,16 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
-	// Drive the motors here.
-	uint8_t nextCoilX = xQueue.pop();
+	if ( ! xQueue.isEmpty() ){
+		// Drive the motors here.
+		uint8_t nextCoilX = xQueue.pop();
 
-	// drive the X coils.  Note: This assumes that the controller is running fast
-	//  enough that the motors won't notice the fact that the coils are not changing
-	//  simultaneously.  If they do, we'll need to use the BSBR register.
-	HAL_GPIO_WritePin(X_0_GPIO_Port, X_0_Pin, nextCoilX & 0x1 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(X_1_GPIO_Port, X_1_Pin, nextCoilX & 0x2 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(X_2_GPIO_Port, X_2_Pin, nextCoilX & 0x4 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(X_3_GPIO_Port, X_3_Pin, nextCoilX & 0x8 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+		// drive the X coils.  Note: This assumes that the controller is running fast
+		//  enough that the motors won't notice the fact that the coils are not changing
+		//  simultaneously.  If they do, we'll need to use the BSBR register.
+		HAL_GPIO_WritePin(X_0_GPIO_Port, X_0_Pin, nextCoilX & 0x1 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(X_1_GPIO_Port, X_1_Pin, nextCoilX & 0x2 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(X_2_GPIO_Port, X_2_Pin, nextCoilX & 0x4 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(X_3_GPIO_Port, X_3_Pin, nextCoilX & 0x8 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+	}
 }
