@@ -41,6 +41,7 @@ private:
 	uint8_t q[MoveQueue::size>>1];
 	unsigned int wrEntry = 0;
 	unsigned int rdEntry = 0;
+	bool wrapped = false;
 
 	// Helper functions
 	uint8_t *wrPtr() { return &q[wrEntry>>1]; }
@@ -51,6 +52,9 @@ private:
 
 public :
 	bool isEmpty(){ return wrEntry == rdEntry; }
+	bool count(){ return (wrapped ? size : 0 ) + wrEntry - rdEntry; }
+	bool full(){ return count() == size; }
+
 
 	// Push the low 4 bits into the appropriate place.
 	// Not worried about overflow as we need to size this
@@ -66,7 +70,9 @@ public :
 		}
 		*wrPtr() |= item;
 		// Bump pointer and wrap
-		wrEntry++; wrEntry &= (size - 1);
+		wrEntry++;
+		if ( wrEntry == size ) wrapped = true;
+		wrEntry &= (size - 1);
 	}
 
 	// Pop the top element.
@@ -79,7 +85,9 @@ public :
 		val = rdOdd() ? val >> 4 : val & 0x0f;
 		if ( rdEntry > wrEntry || wrEntry - rdEntry > 1  ) {
 			// bump and wrap
-			rdEntry++; rdEntry &= (size - 1);
+			rdEntry++;
+			if ( rdEntry == size ) wrapped = false;
+			rdEntry &= (size - 1);
 		}
 		return val;
 	}
@@ -93,14 +101,17 @@ extern "C" void mazeMain(void){
 
 	xQueue.push(activeCoils[0]);
 
-	for ( unsigned i = 0; i < MoveQueue::size-4; i++) {
+	for ( unsigned i = 0; i < 2028; i++) {
 		xQueue.push(activeCoils[i&0x3]);
 	}
 
 	HAL_TIM_Base_Start_IT(&htim14);
 
 	while(1){
-
+		HAL_Delay(5000);
+		for ( unsigned i = 0; i < 2008; i++) {
+			xQueue.push(activeCoils[i&0x3]);
+		}
 	}
 
 }
