@@ -9,10 +9,14 @@
 #include <assert.h>
 
 volatile bool userPressed = false;
+volatile bool xCommand = false;
+volatile bool yCommand = false;
+
+
 
 // These are written by the ISR and read by the main loop.
-volatile int8_t stepXCount = 0;
-volatile int8_t stepYCount = 0;
+volatile int8_t xStepCount = 0;
+volatile int8_t yStepCount = 0;
 
 void stepXY( int8_t xCount, int8_t yCount );
 
@@ -33,6 +37,16 @@ const uint8_t activeCoils[] = {
 		0b0011,
 		0b1001
 };
+
+enum class Mode : uint8_t {
+	StepDir = 0,
+	PWM = 1
+};
+
+struct {
+	Mode mode = Mode::StepDir;
+} registers;
+
 
 class MoveQueue {
 public:
@@ -96,31 +110,85 @@ public :
 };
 
 MoveQueue xQueue;
+MoveQueue yQueue;
 
 extern "C" void mazeMain(void){
-	uint8_t quadrant = 0;
-
+	static uint8_t xQuadrant = 0;
+	static uint8_t yQuadrant = 0;
+	bool forward = true;
+	uint8_t stepCount;
 	HAL_TIM_Base_Start_IT(&htim14);
 
-	HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_RESET);
-	HAL_Delay(1000);
+	// Should guard this with interrupt off
 
-	while(1){
-		for ( unsigned i = 0; i < 2032; i++) {
-			while(xQueue.full()){
-				HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_SET);
+	while(1) {
+
+		if ( xCommand ){
+			forward = xStepCount >= 0;
+			if ( forward ){
+				stepCount = xStepCount;
+			} else {
+				stepCount = -xStepCount;
 			}
-			//HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_RESET);
-			xQueue.push(activeCoils[i&0x3]);
+			for ( int i = 0; i < stepCount << 2; i++ ){
+				// Add 4 quarter steps per step
+				xQueue.push(activeCoils[xQuadrant]);
+				xQuadrant += (forward ? 1 : -1); xQuadrant &= 0x3;
+			}
+			xCommand = false;
 		}
-		HAL_Delay(5000);
+
+		if ( yCommand ){
+			forward = yStepCount >= 0;
+			if ( forward ) {
+				stepCount = yStepCount;
+			} else {
+				stepCount = -yStepCount;
+			}
+			for ( int i = 0; i < stepCount << 2; i++ ){
+				yQueue.push(activeCoils[yQuadrant]);
+				yQuadrant += (forward ? 1 : -1); yQuadrant &= 0x3;
+			}
+			yCommand = false;
+		}
 	}
+
+//	while(1){
+//		for ( unsigned i = 0; i < 2032; i++) {
+//			while(xQueue.full()){
+//				HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_SET);
+//			}
+//			//HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_RESET);
+//			xQueue.push(activeCoils[i&0x3]);
+//		}
+//		HAL_Delay(5000);
+//	}
 
 }
 
 
 extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 	if ( GPIO_Pin == User_Button_Pin ) userPressed = true;
+
+	if ( GPIO_Pin == StepX_Pin ){
+		// Check the direction
+		if ( HAL_GPIO_ReadPin(DirX_GPIO_Port, DirX_Pin) ){
+			xStepCount = -1;
+		} else {
+			xStepCount = 1;
+		}
+		xCommand = true;
+	}
+
+	if ( GPIO_Pin == StepY_Pin ){
+		if ( HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin) ) {
+			yStepCount = 1;
+		} else {
+			yStepCount = -1;
+		}
+		yCommand = true;
+	}
+
 }
 
 
