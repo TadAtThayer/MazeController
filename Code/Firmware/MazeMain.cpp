@@ -40,11 +40,14 @@ const uint8_t activeCoils[] = {
 
 enum class Mode : uint8_t {
 	StepDir = 0,
-	PWM = 1
+	PWM = 1,
+	Calibrate
 };
 
 struct {
 	Mode mode = Mode::StepDir;
+	uint8_t errCount = 0;
+
 } registers;
 
 
@@ -170,7 +173,7 @@ extern "C" void mazeMain(void){
 extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 	if ( GPIO_Pin == User_Button_Pin ) userPressed = true;
 
-	if ( GPIO_Pin == StepX_Pin ){
+	if ( GPIO_Pin == StepX_Pin && registers.mode == Mode::StepDir ){
 		// Check the direction
 		if ( HAL_GPIO_ReadPin(DirX_GPIO_Port, DirX_Pin) ){
 			xStepCount = -1;
@@ -180,7 +183,7 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 		xCommand = true;
 	}
 
-	if ( GPIO_Pin == StepY_Pin ){
+	if ( GPIO_Pin == StepY_Pin && registers.mode == Mode::StepDir ){
 		if ( HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin) ) {
 			yStepCount = 1;
 		} else {
