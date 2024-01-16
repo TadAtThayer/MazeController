@@ -56,7 +56,16 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        "silk_edge_clearance|186780000|89065000|a1531b39-8dae-4637-9a8d-49791182f594|499c4f11-07c7-42dc-9233-f46900fc9b26",
+        "silk_edge_clearance|186780000|89065000|a1531b39-8dae-4637-9a8d-49791182f594|d9865338-d0b8-43dc-a482-232c73779af2",
+        "silk_over_copper|162295730|103058339|f1153ad6-fcc3-4bef-8e99-e1baa4485937|00000000-0000-0000-0000-000000000000",
+        "silk_overlap|126985737|133692241|de584e5b-34bc-4f90-b6b0-aa2f79b3d6ae|08352786-7740-4172-ad3b-d90b9ddb5d74",
+        "silk_overlap|127035737|90742241|6bb21b48-292c-4ba5-90e8-6d4c80c6cdfb|8ac63fda-0518-4766-ac8f-0032cd7bdaa0",
+        "silk_overlap|157410000|103095000|f1153ad6-fcc3-4bef-8e99-e1baa4485937|702a7e1b-dfae-47af-80e6-f3b06b1bc784",
+        "silk_overlap|159950000|103095000|f1153ad6-fcc3-4bef-8e99-e1baa4485937|ea1f3e9e-e118-4fbe-b76d-901aa131934f",
+        "silk_overlap|162490000|103095000|f1153ad6-fcc3-4bef-8e99-e1baa4485937|b861d369-5415-422d-a276-c16dcec6b2eb"
+      ],
       "meta": {
         "filename": "board_design_settings.json",
         "version": 2
@@ -128,7 +137,7 @@
         "min_text_thickness": 0.08,
         "min_through_hole_diameter": 0.3,
         "min_track_width": 0.0,
-        "min_via_annular_width": 0.5,
+        "min_via_annular_width": 0.0,
         "min_via_diameter": 0.5,
         "solder_mask_to_copper_clearance": 0.0,
         "use_height_for_length_calcs": true
@@ -187,16 +196,12 @@
           "drill": 0.0
         },
         {
-          "diameter": 0.35,
-          "drill": 0.2
-        },
-        {
-          "diameter": 0.4,
+          "diameter": 0.42,
           "drill": 0.2
         },
         {
           "diameter": 0.5,
-          "drill": 0.3
+          "drill": 0.2
         }
       ],
       "zones_allow_external_fillets": false,
