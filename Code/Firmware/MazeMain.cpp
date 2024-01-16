@@ -8,6 +8,25 @@
 #include <stdint.h>
 #include <assert.h>
 
+
+// These are the number of phase activations per 360 degress.
+#define PPR 2032
+
+// The pulse detector will report the pulse length
+// in microseconds ranging from 1000 to 2000.  This is
+// 180 degrees of arc.
+//
+// There are approximately 5.6 activations per degree.
+//
+// 2032 steps / 360 degrees = 5.64 phases per degree.
+//
+// Now we need to convert from usec to steps...
+//
+// (2032 phases/ 360 degrees) * (180 degrees / 1000 usec) = 1 phase per usec.
+#define PhasePerUSec 1
+
+
+
 volatile bool userPressed = false;
 volatile bool xCommand = false;
 volatile bool yCommand = false;
@@ -24,6 +43,7 @@ int8_t stepsToGo(int8_t stepsCompleted, int8_t totalStepsNeeded );
 
 // Declared in main.c
 extern "C" TIM_HandleTypeDef htim14;
+extern "C" TIM_HandleTypeDef htim16;
 
 // One step of the motor is 4 phase acitvations.
 //  This sequence does a full step and provides decent torque.
@@ -47,7 +67,6 @@ enum class Mode : uint8_t {
 struct {
 	Mode mode = Mode::StepDir;
 	uint8_t errCount = 0;
-
 } registers;
 
 
@@ -115,18 +134,55 @@ public :
 MoveQueue xQueue;
 MoveQueue yQueue;
 
+volatile 	uint16_t targetXPW = 1500;
+volatile 	uint16_t targetYPW = 1500;
+
 extern "C" void mazeMain(void){
-	static uint8_t xQuadrant = 0;
-	static uint8_t yQuadrant = 0;
+	uint8_t xQuadrant = 0;
+	uint8_t yQuadrant = 0;
+
+	uint16_t currentXPW = 1500;
+	uint16_t currentYPW = 1500;
+
 	bool forward = true;
 	uint8_t stepCount;
-	HAL_TIM_Base_Start_IT(&htim14);
 
+	HAL_TIM_Base_Start_IT(&htim14);
+	HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
 	// Should guard this with interrupt off
 
 	while(1) {
 
-		if ( xCommand ){
+		if ( currentXPW != targetXPW ){
+			// figure out how many pulses to issue
+			int increment = 1;
+			int phases = (currentXPW - targetXPW) * PhasePerUSec;
+			if ( phases < 0 ){
+				phases = -phases;
+				increment = -1;
+			}
+			for ( int i = 0; i < phases; i++ ){
+				xQueue.push(activeCoils[xQuadrant]);
+				xQuadrant += increment; xQuadrant &= 0x3;
+			}
+			currentXPW = targetXPW;
+		}
+
+		if ( currentYPW != targetYPW ){
+			// figure out how many pulses to issue
+			int increment = 1;
+			int phases = (currentYPW - targetYPW) * PhasePerUSec;
+			if ( phases < 0 ){
+				phases = -phases;
+				increment = -1;
+			}
+			for ( int i = 0; i < phases; i++ ){
+				yQueue.push(activeCoils[yQuadrant]);
+				yQuadrant += increment; yQuadrant &= 0x3;
+			}
+			currentYPW = targetYPW;
+		}
+		if ( xCommand ){ // signal from the interrupt handler
 			forward = xStepCount >= 0;
 			if ( forward ){
 				stepCount = xStepCount;
@@ -194,11 +250,25 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 
 }
 
-
+extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
+	if ( htim == &htim16 ) {
+		if ( HAL_GPIO_ReadPin(StepX_GPIO_Port, StepX_Pin) == GPIO_PIN_SET) {
+			// rising edge - 0 the counter
+			htim->Instance->CNT = 0;
+		} else {
+			// falling edge, report out the value
+			targetXPW = htim->Instance->CNT;
+		}
+	}
+}
 
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
-	if ( ! xQueue.isEmpty() ){
+	if ( htim == &htim16 ) {
+		while(1);
+	}
+
+	if ( htim == &htim14 && !xQueue.isEmpty() ){
 		// Drive the motors here.
 		uint8_t nextCoilX = xQueue.pop();
 
@@ -211,3 +281,20 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		HAL_GPIO_WritePin(X_3_GPIO_Port, X_3_Pin, nextCoilX & 0x8 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
 	}
 }
+
+
+
+//--------- Documentation ------------------
+//
+// Basic timer setup.  This updates the stepper at 625Hz.
+//
+//htim14.Instance = TIM14;
+//htim14.Init.Prescaler = 2-1;
+//htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
+//htim14.Init.Period = 38400-1;
+//htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+//htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+//if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
+//{
+//  Error_Handler();
+//}

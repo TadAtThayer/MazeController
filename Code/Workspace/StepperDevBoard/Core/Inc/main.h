@@ -62,7 +62,6 @@ void Error_Handler(void);
 #define User_Button_EXTI_IRQn EXTI4_15_IRQn
 #define StepX_Pin GPIO_PIN_0
 #define StepX_GPIO_Port GPIOA
-#define StepX_EXTI_IRQn EXTI0_1_IRQn
 #define DirX_Pin GPIO_PIN_1
 #define DirX_GPIO_Port GPIOA
 #define DirY_Pin GPIO_PIN_2
