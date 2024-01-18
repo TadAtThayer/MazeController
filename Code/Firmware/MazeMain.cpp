@@ -44,6 +44,7 @@ int8_t stepsToGo(int8_t stepsCompleted, int8_t totalStepsNeeded );
 // Declared in main.c
 extern "C" TIM_HandleTypeDef htim14;
 extern "C" TIM_HandleTypeDef htim16;
+extern "C" I2C_HandleTypeDef hi2c1;
 
 // One step of the motor is 4 phase acitvations.
 //  This sequence does a full step and provides decent torque.
@@ -61,11 +62,12 @@ const uint8_t activeCoils[] = {
 enum class Mode : uint8_t {
 	StepDir = 0,
 	PWM = 1,
+	Test = 2,
 	Calibrate
 };
 
 struct {
-	Mode mode = Mode::StepDir;
+	Mode mode = Mode::Test;
 	uint8_t errCount = 0;
 } registers;
 
@@ -144,6 +146,8 @@ extern "C" void mazeMain(void){
 	uint16_t currentXPW = 1500;
 	uint16_t currentYPW = 1500;
 
+	uint8_t i2cData;
+
 	bool forward = true;
 	uint8_t stepCount;
 
@@ -151,6 +155,8 @@ extern "C" void mazeMain(void){
 	HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
 	// Should guard this with interrupt off
 
+	HAL_I2C_EnableListen_IT(&hi2c1);
+	while(1);
 	while(1) {
 
 		if ( currentXPW != targetXPW ){
@@ -282,7 +288,9 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	}
 }
 
-
+extern "C" void HAL_I2C_ListenCpltCallback (I2C_HandleTypeDef *hi2c){
+	HAL_I2C_EnableListen_IT(&hi2c1);
+}
 
 //--------- Documentation ------------------
 //

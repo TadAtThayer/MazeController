@@ -164,13 +164,13 @@ static void MX_I2C1_Init(void)
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
   hi2c1.Init.Timing = 0x20303E5D;
-  hi2c1.Init.OwnAddress1 = 128;
+  hi2c1.Init.OwnAddress1 = 30;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c1.Init.OwnAddress2 = 0;
   hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_ENABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
     Error_Handler();
@@ -290,11 +290,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, Y1_3_Pin|Y0_3_Pin|Y0_2_Pin|Y1_1_Pin
-                          |Y0_1_Pin|Y1_0_Pin|Y0_0_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, Y1_3_Pin|Y0_3_Pin|Y1_2_Pin|Y0_2_Pin
+                          |Y1_1_Pin|Y0_1_Pin|Y1_0_Pin|Y0_0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, ClockOut_Pin|X_0_Pin|X_1_Pin|X_2_Pin
@@ -312,36 +309,34 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : Y1_3_Pin Y0_3_Pin Y0_2_Pin Y1_1_Pin
-                           Y0_1_Pin Y1_0_Pin Y0_0_Pin */
-  GPIO_InitStruct.Pin = Y1_3_Pin|Y0_3_Pin|Y0_2_Pin|Y1_1_Pin
-                          |Y0_1_Pin|Y1_0_Pin|Y0_0_Pin;
+  /*Configure GPIO pins : Y1_3_Pin Y0_3_Pin Y1_2_Pin Y0_2_Pin
+                           Y1_1_Pin Y0_1_Pin Y1_0_Pin Y0_0_Pin */
+  GPIO_InitStruct.Pin = Y1_3_Pin|Y0_3_Pin|Y1_2_Pin|Y0_2_Pin
+                          |Y1_1_Pin|Y0_1_Pin|Y1_0_Pin|Y0_0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : Y1_2_Pin */
-  GPIO_InitStruct.Pin = Y1_2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(Y1_2_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : ClockOut_Pin X_0_Pin X_1_Pin X_2_Pin
-                           X_3_Pin */
-  GPIO_InitStruct.Pin = ClockOut_Pin|X_0_Pin|X_1_Pin|X_2_Pin
-                          |X_3_Pin;
+  /*Configure GPIO pin : ClockOut_Pin */
+  GPIO_InitStruct.Pin = ClockOut_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(ClockOut_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : StepY_Pin */
   GPIO_InitStruct.Pin = StepY_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(StepY_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : X_0_Pin X_1_Pin X_2_Pin X_3_Pin */
+  GPIO_InitStruct.Pin = X_0_Pin|X_1_Pin|X_2_Pin|X_3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
