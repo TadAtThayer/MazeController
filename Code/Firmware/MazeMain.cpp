@@ -26,12 +26,18 @@
 #define PhasePerUSec 1
 
 
-
+#ifndef CONNECTORBOARD
 volatile bool userPressed = false;
+#endif
+
 volatile bool xCommand = false;
 volatile bool yCommand = false;
 
+// This depends on all X pins being in the same bank.
+#define X_MASK ( X_0_Pin | X_1_Pin | X_2_Pin | X_3_Pin )
 
+// This depends on all Y pins being in the same bank.
+#define Y_MASK ( Y0_0_Pin | Y0_1_Pin | Y0_2_Pin | Y0_3_Pin | Y1_0_Pin | Y1_1_Pin | Y1_2_Pin | Y1_3_Pin )
 
 // These are written by the ISR and read by the main loop.
 volatile int8_t xStepCount = 0;
@@ -66,9 +72,16 @@ enum class Mode : uint8_t {
 	Calibrate
 };
 
+enum class SelfTestResult : uint8_t {
+	Fail = 0,
+	Pass = 1,
+	NotRun
+};
+
 struct {
 	Mode mode = Mode::Test;
 	uint8_t errCount = 0;
+	SelfTestResult selfTest = SelfTestResult::NotRun;
 } registers;
 
 
@@ -148,6 +161,8 @@ extern "C" void mazeMain(void){
 
 	uint8_t i2cData;
 
+	bool selfTestComplete = false;
+
 	bool forward = true;
 	uint8_t stepCount;
 
@@ -156,8 +171,24 @@ extern "C" void mazeMain(void){
 	// Should guard this with interrupt off
 
 	HAL_I2C_EnableListen_IT(&hi2c1);
-	while(1);
+
+
+
 	while(1) {
+		if ( registers.mode == Mode::Test && !selfTestComplete ){
+			// Do the next tick of self testing.
+
+			// This test is basically to make sure there are no bridging faults
+			// around the processor.
+			//
+			// Make all the pins input with weak pulldown.  Drive a each pin high in
+			// succession, reading and confirming between each pass.
+			//
+			// Go the other way.  Weak pullup, drive low.  Check.
+			//
+			// Return to default.
+
+		}
 
 		if ( currentXPW != targetXPW ){
 			// figure out how many pulses to issue
@@ -233,7 +264,10 @@ extern "C" void mazeMain(void){
 
 
 extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
+
+#ifndef CONNECTORBOARD
 	if ( GPIO_Pin == User_Button_Pin ) userPressed = true;
+#endif
 
 	if ( GPIO_Pin == StepX_Pin && registers.mode == Mode::StepDir ){
 		// Check the direction
@@ -270,9 +304,6 @@ extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
 
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
-	if ( htim == &htim16 ) {
-		while(1);
-	}
 
 	if ( htim == &htim14 && !xQueue.isEmpty() ){
 		// Drive the motors here.
