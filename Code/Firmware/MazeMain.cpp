@@ -87,19 +87,16 @@ struct {
 
 class MoveQueue {
 public:
-	static const unsigned int size = 2048;
+	static const unsigned int size = 128;
 private:
-	uint8_t q[MoveQueue::size>>1];
+	int16_t q[MoveQueue::size];
 	unsigned int wrEntry = 0;
 	unsigned int rdEntry = 0;
 	bool wrapped = false;
 
 	// Helper functions
-	uint8_t *wrPtr() { return &q[wrEntry>>1]; }
-	uint8_t *rdPtr() { return &q[rdEntry>>1]; }
-
-	bool wrOdd() { return wrEntry & 0x1 ? true : false; }
-	bool rdOdd() { return rdEntry & 0x1 ? true : false; }
+	int16_t *wrPtr() { return &q[wrEntry]; }
+	int16_t *rdPtr() { return &q[rdEntry]; }
 
 public :
 	bool isEmpty(){ return count() == 0; }
@@ -111,15 +108,8 @@ public :
 	// Not worried about overflow as we need to size this
 	// to be large enough to keep up with the incoming
 	// requests.
-	void push( uint8_t item ){
-		item &= 0xf;
-		if (wrOdd()){
-			item <<= 4;
-			*wrPtr() &= 0x0f;
-		} else {
-			*wrPtr() &= 0xf0;
-		}
-		*wrPtr() |= item;
+	void push( int16_t item ){
+		*wrPtr() = item;
 		// Bump pointer and wrap
 		wrEntry++;
 		if ( wrEntry == size ) wrapped = true;
@@ -129,11 +119,9 @@ public :
 	// Pop the top element.
 	//  If we are empty, just return whatever is there.
 	//  Consumer must check full/empty status.
-	uint8_t pop() {
-		uint8_t val = *rdPtr();
+	int16_t pop() {
+		int16_t val = *rdPtr();
 
-		// justify the actual bits
-		val = rdOdd() ? val >> 4 : val & 0x0f;
 		if ( count() > 0  ) {
 			// bump and wrap
 			rdEntry++;
@@ -167,12 +155,15 @@ extern "C" void mazeMain(void){
 	uint8_t stepCount;
 
 	HAL_TIM_Base_Start_IT(&htim14);
-	HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
-	// Should guard this with interrupt off
 
+	if ( registers.mode == Mode::PWM ) {
+		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
+	}
+
+	// Should guard this with interrupt off
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
-
+	xQueue.push(2048 << 2);
 
 	while(1) {
 		if ( registers.mode == Mode::Test && !selfTestComplete ){
@@ -302,20 +293,37 @@ extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
 	}
 }
 
+// This ISR controls the motor coils.  The queues store the number of fractional
+//  steps to take.  The ISR will pop the next value and work on it until it is
+//  done.  There is no motion planning here...  If you want to move both motors
+//  simultaneously, that needs to be coordinated in the outer loop.
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
+	static int xStepsToTake = 0;
+	static int yStepsToTake = 0;
+	uint8_t xPhasePosition = 0;
+	uint8_t yPhasePosition = 0;
 
-	if ( htim == &htim14 && !xQueue.isEmpty() ){
+	if ( htim == &htim14) {
+
+		if ( xStepsToTake == 0 && !xQueue.isEmpty() ){
+			xStepsToTake = xQueue.pop();
+		}
+
 		// Drive the motors here.
-		uint8_t nextCoilX = xQueue.pop();
+		if ( xStepsToTake ) {
+			uint8_t nextCoilX = activeCoils[xPhasePosition];
+			xStepsToTake += (xStepsToTake > 0 ? -1 : 1 );
+			xPhasePosition++; xPhasePosition &= (sizeof(activeCoils) == 4) ? 0x3 : 0x7;  // 4 or 8 steps, nothing else allowed
 
-		// drive the X coils.  Note: This assumes that the controller is running fast
-		//  enough that the motors won't notice the fact that the coils are not changing
-		//  simultaneously.  If they do, we'll need to use the BSBR register.
-		HAL_GPIO_WritePin(X_0_GPIO_Port, X_0_Pin, nextCoilX & 0x1 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(X_1_GPIO_Port, X_1_Pin, nextCoilX & 0x2 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(X_2_GPIO_Port, X_2_Pin, nextCoilX & 0x4 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(X_3_GPIO_Port, X_3_Pin, nextCoilX & 0x8 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+			// drive the X coils.  Note: This assumes that the controller is running fast
+			//  enough that the motors won't notice the fact that the coils are not changing
+			//  simultaneously.  If they do, we'll need to use the BSBR register.
+			HAL_GPIO_WritePin(X_0_GPIO_Port, X_0_Pin, nextCoilX & 0x1 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(X_1_GPIO_Port, X_1_Pin, nextCoilX & 0x2 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(X_2_GPIO_Port, X_2_Pin, nextCoilX & 0x4 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(X_3_GPIO_Port, X_3_Pin, nextCoilX & 0x8 ? GPIO_PinState::GPIO_PIN_SET : GPIO_PinState::GPIO_PIN_RESET);
+		}
 	}
 }
 
