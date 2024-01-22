@@ -3,6 +3,7 @@ CAD.formats=
 CAD.pinconfig=
 CAD.provider=
 File.Version=6
+GPIO.groupedBy=Group By Peripherals
 I2C1.IPParameters=Timing,NoStretchMode,OwnAddress
 I2C1.NoStretchMode=I2C_NOSTRETCH_ENABLE
 I2C1.OwnAddress=0x20
