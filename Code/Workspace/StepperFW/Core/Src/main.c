@@ -57,7 +57,7 @@ static void MX_I2C1_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
-void MazeMain(void);
+void mazeMain(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/

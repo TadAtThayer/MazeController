@@ -39,6 +39,7 @@ volatile bool yCommand = false;
 // This depends on all Y pins being in the same bank.
 #define Y_MASK ( Y0_0_Pin | Y0_1_Pin | Y0_2_Pin | Y0_3_Pin | Y1_0_Pin | Y1_1_Pin | Y1_2_Pin | Y1_3_Pin )
 
+
 // These are written by the ISR and read by the main loop.
 volatile int8_t xStepCount = 0;
 volatile int8_t yStepCount = 0;
@@ -64,6 +65,9 @@ const uint8_t activeCoils[] = {
 		0b0011,
 		0b1001
 };
+
+#define PhaseMask 0x3
+
 
 enum class Mode : uint8_t {
 	StepDir = 0,
@@ -163,9 +167,19 @@ extern "C" void mazeMain(void){
 	// Should guard this with interrupt off
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
-	xQueue.push(2048 << 2);
+	xQueue.push(2048);
 
 	while(1) {
+
+		if ( xQueue.isEmpty() ) {
+			forward = !forward;
+			if ( forward ) {
+				xQueue.push(2048);
+			} else {
+				xQueue.push(-2048);
+			}
+		}
+
 		if ( registers.mode == Mode::Test && !selfTestComplete ){
 			// Do the next tick of self testing.
 
@@ -300,21 +314,25 @@ extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 	static int xStepsToTake = 0;
-	static int yStepsToTake = 0;
-	uint8_t xPhasePosition = 0;
-	uint8_t yPhasePosition = 0;
+	static int xStepsTaken = 0;
+
 
 	if ( htim == &htim14) {
 
-		if ( xStepsToTake == 0 && !xQueue.isEmpty() ){
+		if ( xStepsTaken == xStepsToTake && !xQueue.isEmpty() ){
 			xStepsToTake = xQueue.pop();
+			xStepsTaken = 0;
 		}
 
 		// Drive the motors here.
 		if ( xStepsToTake ) {
-			uint8_t nextCoilX = activeCoils[xPhasePosition];
-			xStepsToTake += (xStepsToTake > 0 ? -1 : 1 );
-			xPhasePosition++; xPhasePosition &= (sizeof(activeCoils) == 4) ? 0x3 : 0x7;  // 4 or 8 steps, nothing else allowed
+			uint8_t nextCoilX = activeCoils[xStepsTaken & PhaseMask];
+
+			if ( xStepsToTake > 0 ){
+				xStepsTaken++;
+			} else {
+				xStepsTaken--;
+			}
 
 			// drive the X coils.  Note: This assumes that the controller is running fast
 			//  enough that the motors won't notice the fact that the coils are not changing
