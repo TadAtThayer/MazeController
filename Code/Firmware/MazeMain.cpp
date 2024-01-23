@@ -9,8 +9,8 @@
 #include <assert.h>
 
 
-// These are the number of phase activations per 360 degress.
-#define PPR 2032
+// Pulse per revolution
+#define PPR 256
 
 // The pulse detector will report the pulse length
 // in microseconds ranging from 1000 to 2000.  This is
@@ -22,7 +22,7 @@
 //
 // Now we need to convert from usec to steps...
 //
-// (2032 phases/ 360 degrees) * (180 degrees / 1000 usec) = 1 phase per usec.
+// (2048 phases/ 360 degrees) * (180 degrees / 1000 usec) = 1 phase per usec.
 #define PhasePerUSec 1
 
 
@@ -120,10 +120,6 @@ public :
 	bool full(){ return count() == size; }
 
 
-	// Push the low 4 bits into the appropriate place.
-	// Not worried about overflow as we need to size this
-	// to be large enough to keep up with the incoming
-	// requests.
 	void push( int16_t item ){
 		*wrPtr() = item;
 		// Bump pointer and wrap
@@ -175,14 +171,6 @@ public :
 		int incVal = 1;
 
 		if ( !isEmpty() ){
-			if ( stepsTaken == peek() ){
-				// We're done with the move at the head of the queue
-				//  pop it and start the next.
-				pop();
-			}
-		}
-
-		if ( !isEmpty() ){
 
 			if ( stepsTaken > peek() ) {
 				// We're going backward.
@@ -194,13 +182,20 @@ public :
 			quadrant += incVal;
 			quadrant &= fullStep ? 0x3 : 0x7;
 			stepsTaken += incVal;
+
+			if ( stepsTaken == peek() ){
+				// We're done with the move at the head of the queue
+				//  pop it and start the next.
+				pop();
+			}
+
 		}
 	}
 };
 
 MotorQueue xQueue( xCoils, X_0_GPIO_Port, X_MASK );
-MoveQueue yQueue;
-MoveQueue yPQueue;
+MotorQueue yQueue( y0Coils, Y0_0_GPIO_Port, Y0_MASK );
+MotorQueue yPQueue( y1Coils, Y1_0_GPIO_Port, Y1_MASK );
 
 
 extern "C" void mazeMain(void){
@@ -212,6 +207,7 @@ extern "C" void mazeMain(void){
 
 	HAL_TIM_Base_Start_IT(&htim14);
 
+	htim14.Instance->ARR = 10000;
 
 	if ( registers.mode == Mode::PWM ) {
 		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
@@ -243,18 +239,18 @@ extern "C" void mazeMain(void){
 				if ( n == 0) {
 					n++;
 					if ( forward ) {
-						xQueue.push(2048);
+						xQueue.push(PPR*4);
 					} else {
-						xQueue.push(-2048);
+						xQueue.push(-PPR*4);
 					}
 				}
 
 				else if ( n == 1 ) {
 					n++;
 					if ( forward ){
-						yQueue.push(2048);
+						yQueue.push(PPR*4);
 					} else {
-						yQueue.push(-2048);
+						yQueue.push(-PPR*4);
 					}
 				}
 
@@ -263,9 +259,9 @@ extern "C" void mazeMain(void){
 					forward = !forward;
 
 					if ( forward ){
-						yPQueue.push(2048);
+						yPQueue.push(PPR*4);
 					} else {
-						yPQueue.push(-2048);
+						yPQueue.push(-PPR*4);
 					}
 				}
 			}
@@ -394,6 +390,8 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 	if ( htim == &htim14) {
 		xQueue.step();
+		yQueue.step();
+		yPQueue.step();
 
 //		if ( !xQueue.isEmpty() ){
 //			if ( xStepsTaken != xQueue.peek() ){
