@@ -358,9 +358,26 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 	if ( htim == &htim14) {
 
-		if ( xStepsTaken == xStepsToTake && !xQueue.isEmpty() ){
-			xStepsToTake = xQueue.pop();
-			xStepsTaken = 0;
+		if ( !xQueue.isEmpty() ){
+			if ( xStepsTaken != xQueue.peek() ){
+				// drive the motors.
+				uint8_t nextCoilX = xCoils[xStepsTaken & PhaseMask];
+
+				if ( xQueue.peek() > 0 ){
+					xStepsTaken++;
+				} else {
+					xStepsTaken--;
+				}
+
+				// This takes advantage of the fact that the BSR register is set priority,
+				//  so the pins that are both reset and set, end up getting set.
+				HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, nextCoilX);
+			}
+
+			if ( xStepsTaken == xQueue.peek() ){
+				xQueue.pop();
+				xStepsTaken = 0;
+			}
 		}
 
 		if ( yStepsTaken == yStepsToTake && !yQueue.isEmpty() ){
@@ -370,17 +387,6 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 		// Drive the motors here.
 		if ( xStepsToTake ) {
-			uint8_t nextCoilX = xCoils[xStepsTaken & PhaseMask];
-
-			if ( xStepsToTake > 0 ){
-				xStepsTaken++;
-			} else {
-				xStepsTaken--;
-			}
-
-			// This takes advantage of the fact that the BSR register is set priority,
-			//  so the pins that are both reset and set, end up getting set.
-			HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, nextCoilX);
 		}
 
 		// Drive the motors here.
