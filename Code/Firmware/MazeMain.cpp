@@ -37,17 +37,9 @@ volatile bool yCommand = false;
 #define X_MASK ( X_0_Pin | X_1_Pin | X_2_Pin | X_3_Pin )
 
 // This depends on all Y pins being in the same bank.
-#define Y0_MASK ((uint16_t)(Y0_0_Pin | Y0_1_Pin | Y0_2_Pin | Y0_3_Pin))
+#define Y0_MASK (Y0_0_Pin | Y0_1_Pin | Y0_2_Pin | Y0_3_Pin)
 #define Y1_MASK (Y1_0_Pin | Y1_1_Pin | Y1_2_Pin | Y1_3_Pin)
 
-
-// These are written by the ISR and read by the main loop.
-volatile int8_t xStepCount = 0;
-volatile int8_t yStepCount = 0;
-
-void stepXY( int8_t xCount, int8_t yCount );
-
-int8_t stepsToGo(int8_t stepsCompleted, int8_t totalStepsNeeded );
 
 // Declared in main.c
 extern "C" TIM_HandleTypeDef htim14;
@@ -85,9 +77,7 @@ const uint16_t y1Coils[] = {
 		(Y1_3_Pin), // | (Y1_0_Pin), // 0b1001
 };
 
-
-
-
+// 0x3 for full step or 0x7 for 1/2 step.
 #define PhaseMask 0x3
 
 
@@ -157,37 +147,31 @@ public :
 		return val;
 	}
 
+	// Look at the head element
+	int16_t peek() {
+		int16_t val = *rdPtr();
+		return val;
+	}
+
 
 };
 
 MoveQueue xQueue;
 MoveQueue yQueue;
+MoveQueue yPQueue;
 
 volatile 	uint16_t targetXPW = 1500;
 volatile 	uint16_t targetYPW = 1500;
 
 extern "C" void mazeMain(void){
-	uint8_t xQuadrant = 0;
-	uint8_t yQuadrant = 0;
-
-	uint16_t currentXPW = 1500;
-	uint16_t currentYPW = 1500;
-
-	uint8_t i2cData;
 
 	bool selfTestComplete = false;
-
 	bool forward = true;
-	uint8_t stepCount;
+
+	int n = 0;
 
 	HAL_TIM_Base_Start_IT(&htim14);
 
-//	HAL_GPIO_WritePin(Y0_0_GPIO_Port, Y0_0_Pin, GPIO_PinState::GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(Y0_0_GPIO_Port, Y0_1_Pin, GPIO_PinState::GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(Y0_0_GPIO_Port, Y0_2_Pin, GPIO_PinState::GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(Y0_0_GPIO_Port, Y0_3_Pin, GPIO_PinState::GPIO_PIN_SET);
-//
-//	while(1);
 
 	if ( registers.mode == Mode::PWM ) {
 		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
@@ -196,30 +180,13 @@ extern "C" void mazeMain(void){
 	// Should guard this with interrupt off
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
-	xQueue.push(2048);
-	yQueue.push(2048);
 
 	while(1) {
 
-		if ( xQueue.isEmpty() ) {
-			forward = !forward;
-			if ( forward ) {
-				xQueue.push(2048);
-			} else {
-				xQueue.push(-2048);
-			}
-		}
-
-		if ( yQueue.isEmpty() ) {
-			if ( forward ){
-				yQueue.push(2048);
-			} else {
-				yQueue.push(-2048);
-			}
-		}
-
 		if ( registers.mode == Mode::Test && !selfTestComplete ){
 			// Do the next tick of self testing.
+
+			// What we should do.
 
 			// This test is basically to make sure there are no bridging faults
 			// around the processor.
@@ -231,8 +198,41 @@ extern "C" void mazeMain(void){
 			//
 			// Return to default.
 
-		}
+			// What we're actually doing
+			if ( xQueue.isEmpty() && yQueue.isEmpty() && yPQueue.isEmpty() ){
+				if ( n == 0) {
+					n++;
+					if ( forward ) {
+						xQueue.push(2048);
+					} else {
+						xQueue.push(-2048);
+					}
+				}
 
+				else if ( n == 1 ) {
+					n++;
+					if ( forward ){
+						yQueue.push(2048);
+					} else {
+						yQueue.push(-2048);
+					}
+				}
+
+				else if ( n == 2 ) {
+					n = 0;
+					forward = !forward;
+
+					if ( forward ){
+						yPQueue.push(2048);
+					} else {
+						yPQueue.push(-2048);
+					}
+				}
+			}
+
+
+		}
+/*
 		if ( currentXPW != targetXPW ){
 			// figure out how many pulses to issue
 			int increment = 1;
@@ -290,6 +290,7 @@ extern "C" void mazeMain(void){
 			}
 			yCommand = false;
 		}
+		*/
 	}
 
 //	while(1){
@@ -315,18 +316,18 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 	if ( GPIO_Pin == StepX_Pin && registers.mode == Mode::StepDir ){
 		// Check the direction
 		if ( HAL_GPIO_ReadPin(DirX_GPIO_Port, DirX_Pin) ){
-			xStepCount = -1;
+			//xStepCount = -1;
 		} else {
-			xStepCount = 1;
+			//xStepCount = 1;
 		}
 		xCommand = true;
 	}
 
 	if ( GPIO_Pin == StepY_Pin && registers.mode == Mode::StepDir ){
 		if ( HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin) ) {
-			yStepCount = 1;
+			//yStepCount = 1;
 		} else {
-			yStepCount = -1;
+			//yStepCount = -1;
 		}
 		yCommand = true;
 	}
@@ -351,9 +352,7 @@ extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
 //  simultaneously, that needs to be coordinated in the outer loop.
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
-	static int xStepsToTake = 0;
 	static int xStepsTaken = 0;
-	static int yStepsToTake = 0;
 	static int yStepsTaken = 0;
 
 
