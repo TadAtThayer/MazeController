@@ -156,12 +156,52 @@ public :
 
 };
 
-MoveQueue xQueue;
+class MotorQueue : public MoveQueue {
+private :
+	const uint16_t *coilActivations;
+	bool fullStep = true;
+	uint16_t pinMask;
+	GPIO_TypeDef *gpioPort;
+	int stepsTaken = 0;
+	int quadrant = 0;
+
+public :
+	MotorQueue( const uint16_t *coils, GPIO_TypeDef *port, uint16_t pins ){
+		coilActivations = coils;
+		pinMask = pins;
+		gpioPort = port;
+	}
+	void step(void){
+		int incVal = 1;
+
+		if ( !isEmpty() ){
+			if ( stepsTaken == peek() ){
+				// We're done with the move at the head of the queue
+				//  pop it and start the next.
+				pop();
+			}
+		}
+
+		if ( !isEmpty() ){
+
+			if ( stepsTaken > peek() ) {
+				// We're going backward.
+				incVal = -1;
+			}
+
+			// Drive the motors
+			HAL_GPIO_WriteMultipleStatePin(gpioPort, pinMask, coilActivations[quadrant]);
+			quadrant += incVal;
+			quadrant &= fullStep ? 0x3 : 0x7;
+			stepsTaken += incVal;
+		}
+	}
+};
+
+MotorQueue xQueue( xCoils, X_0_GPIO_Port, X_MASK );
 MoveQueue yQueue;
 MoveQueue yPQueue;
 
-volatile 	uint16_t targetXPW = 1500;
-volatile 	uint16_t targetYPW = 1500;
 
 extern "C" void mazeMain(void){
 
@@ -341,7 +381,7 @@ extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
 			htim->Instance->CNT = 0;
 		} else {
 			// falling edge, report out the value
-			targetXPW = htim->Instance->CNT;
+			//targetXPW = htim->Instance->CNT;
 		}
 	}
 }
@@ -352,59 +392,32 @@ extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
 //  simultaneously, that needs to be coordinated in the outer loop.
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
-	static int xStepsTaken = 0;
-	static int yStepsTaken = 0;
-
-
 	if ( htim == &htim14) {
+		xQueue.step();
 
-		if ( !xQueue.isEmpty() ){
-			if ( xStepsTaken != xQueue.peek() ){
-				// drive the motors.
-				uint8_t nextCoilX = xCoils[xStepsTaken & PhaseMask];
+//		if ( !xQueue.isEmpty() ){
+//			if ( xStepsTaken != xQueue.peek() ){
+//				// drive the motors.
+//				uint8_t nextCoilX = xCoils[xStepsTaken & PhaseMask];
+//
+//				if ( xQueue.peek() > 0 ){
+//					xStepsTaken++;
+//				} else {
+//					xStepsTaken--;
+//				}
+//
+//				// This takes advantage of the fact that the BSR register is set priority,
+//				//  so the pins that are both reset and set, end up getting set.
+//				HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, nextCoilX);
+//			}
+//
+//			if ( xStepsTaken == xQueue.peek() ){
+//				xQueue.pop();
+//				xStepsTaken = 0;
+//			}
+//		}
 
-				if ( xQueue.peek() > 0 ){
-					xStepsTaken++;
-				} else {
-					xStepsTaken--;
-				}
 
-				// This takes advantage of the fact that the BSR register is set priority,
-				//  so the pins that are both reset and set, end up getting set.
-				HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, nextCoilX);
-			}
-
-			if ( xStepsTaken == xQueue.peek() ){
-				xQueue.pop();
-				xStepsTaken = 0;
-			}
-		}
-
-		if ( yStepsTaken == yStepsToTake && !yQueue.isEmpty() ){
-			yStepsToTake = yQueue.pop();
-			yStepsTaken = 0;
-		}
-
-		// Drive the motors here.
-		if ( xStepsToTake ) {
-		}
-
-		// Drive the motors here.
-		if ( yStepsToTake ) {
-			uint16_t nextCoilY0 = y0Coils[yStepsTaken & PhaseMask];
-			uint16_t nextCoilY1 = y1Coils[yStepsTaken & PhaseMask];
-
-			if ( yStepsToTake > 0 ){
-				yStepsTaken++;
-			} else {
-				yStepsTaken--;
-			}
-
-			// This takes advantage of the fact that the BSR register is set priority,
-			//  so the pins that are both reset and set, end up getting set.
-			HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port, Y0_MASK, nextCoilY0);
-			HAL_GPIO_WriteMultipleStatePin(Y1_0_GPIO_Port, Y1_MASK, nextCoilY1);
-		}
 	}
 }
 
