@@ -55,26 +55,26 @@ extern "C" I2C_HandleTypeDef hi2c1;
 // Ideally Y and Y' will reside in a single bank, but probably not
 //  critical.
 const uint16_t xCoils[] = {
-		(X_0_Pin),// | (X_1_Pin), // 0b1100,
-		(X_1_Pin),// | (X_2_Pin), // 0b0110,
-		(X_2_Pin),// | (X_3_Pin), // 0b0011,
-		(X_3_Pin),// | (X_0_Pin), // 0b1001
+		(X_0_Pin) | (X_1_Pin), // 0b1100,
+		(X_1_Pin) | (X_2_Pin), // 0b0110,
+		(X_2_Pin) | (X_3_Pin), // 0b0011,
+		(X_3_Pin) | (X_0_Pin), // 0b1001
 };
 
 // Ideally Y and Y' will reside in a single bank, but probably not
 //  critical.
 const uint16_t y0Coils[] = {
-		(Y0_0_Pin),// | (Y0_1_Pin), // 0b1100,
-		(Y0_1_Pin),// | (Y0_2_Pin), // 0b0110,
-		(Y0_2_Pin),// | (Y0_3_Pin), // 0b0011,
-		(Y0_3_Pin),// | (Y0_0_Pin), // 0b1001
+		(Y0_0_Pin) | (Y0_1_Pin), // 0b1100,
+		(Y0_1_Pin) | (Y0_2_Pin), // 0b0110,
+		(Y0_2_Pin) | (Y0_3_Pin), // 0b0011,
+		(Y0_3_Pin) | (Y0_0_Pin), // 0b1001
 };
 
 const uint16_t y1Coils[] = {
-		(Y1_0_Pin), // | (Y1_1_Pin), // 0b1100,
-		(Y1_1_Pin), // | (Y1_2_Pin), // 0b0110,
-		(Y1_2_Pin), // | (Y1_3_Pin), // 0b0011,
-		(Y1_3_Pin), // | (Y1_0_Pin), // 0b1001
+		(Y1_0_Pin) | (Y1_1_Pin), // 0b1100,
+		(Y1_1_Pin) | (Y1_2_Pin), // 0b0110,
+		(Y1_2_Pin) | (Y1_3_Pin), // 0b0011,
+		(Y1_3_Pin) | (Y1_0_Pin), // 0b1001
 };
 
 // 0x3 for full step or 0x7 for 1/2 step.
@@ -167,6 +167,10 @@ public :
 		pinMask = pins;
 		gpioPort = port;
 	}
+
+	void idle(){
+	}
+
 	void step(void){
 		int incVal = 1;
 
@@ -207,7 +211,7 @@ extern "C" void mazeMain(void){
 
 	HAL_TIM_Base_Start_IT(&htim14);
 
-	htim14.Instance->ARR = 10000;
+	// htim14.Instance->ARR = 15000;
 
 	if ( registers.mode == Mode::PWM ) {
 		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
@@ -219,56 +223,62 @@ extern "C" void mazeMain(void){
 
 	while(1) {
 
-		if ( registers.mode == Mode::Test && !selfTestComplete ){
-			// Do the next tick of self testing.
+		if ( registers.mode == Mode::Test ) {
 
-			// What we should do.
+				// Do the next tick of self testing.
 
-			// This test is basically to make sure there are no bridging faults
-			// around the processor.
-			//
-			// Make all the pins input with weak pulldown.  Drive a each pin high in
-			// succession, reading and confirming between each pass.
-			//
-			// Go the other way.  Weak pullup, drive low.  Check.
-			//
-			// Return to default.
+				// What we should do.
+
+				// This test is basically to make sure there are no bridging faults
+				// around the processor.
+				//
+				// Make all the pins input with weak pulldown.  Drive a each pin high in
+				// succession, reading and confirming between each pass.
+				//
+				// Go the other way.  Weak pullup, drive low.  Check.
+				//
+				// Return to default.
 
 			// What we're actually doing
 			if ( xQueue.isEmpty() && yQueue.isEmpty() && yPQueue.isEmpty() ){
-				if ( n == 0) {
-					n++;
-					if ( forward ) {
-						xQueue.push(PPR*4);
-					} else {
-						xQueue.push(-PPR*4);
+				if ( !selfTestComplete ){
+					if ( n == 0) {
+						n++;
+						if ( forward ) {
+							xQueue.push(PPR*4);
+						} else {
+							xQueue.push(-PPR*4);
+						}
 					}
-				}
 
-				else if ( n == 1 ) {
-					n++;
-					if ( forward ){
-						yQueue.push(PPR*4);
-					} else {
-						yQueue.push(-PPR*4);
+					else if ( n == 1 ) {
+						n++;
+						if ( forward ){
+							yQueue.push(PPR*4);
+						} else {
+							yQueue.push(-PPR*4);
+						}
 					}
-				}
 
-				else if ( n == 2 ) {
-					n = 0;
-					forward = !forward;
+					else if ( n == 2 ) {
+						n = 0;
 
-					if ( forward ){
-						yPQueue.push(PPR*4);
-					} else {
-						yPQueue.push(-PPR*4);
+						if ( forward ){
+							forward = !forward;
+							yPQueue.push(PPR*4);
+						} else {
+							yPQueue.push(-PPR*4);
+							selfTestComplete = true;
+						}
 					}
+
+				} else {
+					HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, 0);
+					HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port, Y0_MASK|Y1_MASK, 0);
 				}
 			}
-
-
 		}
-/*
+			/*
 		if ( currentXPW != targetXPW ){
 			// figure out how many pulses to issue
 			int increment = 1;
