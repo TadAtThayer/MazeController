@@ -9,8 +9,10 @@
 #include <assert.h>
 
 
-// Pulse per revolution
-#define PPR 256
+// These motors (28BYJ-48) are supposedly 32 steps per revolution followed by
+//  a 64:1 gearbox.  So, effectively 2048 full steps.  My experiments indicate
+//  it is actually 512
+#define PPR 512
 
 // The pulse detector will report the pulse length
 // in microseconds ranging from 1000 to 2000.  This is
@@ -110,10 +112,6 @@ private:
 	unsigned int rdEntry = 0;
 	bool wrapped = false;
 
-	// Helper functions
-	int16_t *wrPtr() { return &q[wrEntry]; }
-	int16_t *rdPtr() { return &q[rdEntry]; }
-
 public :
 	bool isEmpty(){ return count() == 0; }
 	unsigned int count(){ return (wrapped ? size : 0 ) + wrEntry - rdEntry; }
@@ -121,9 +119,7 @@ public :
 
 
 	void push( int16_t item ){
-		*wrPtr() = item;
-		// Bump pointer and wrap
-		wrEntry++;
+		q[wrEntry++] = item;
 		if ( wrEntry == size ) wrapped = true;
 		wrEntry &= (size - 1);
 	}
@@ -132,7 +128,7 @@ public :
 	//  If we are empty, just return whatever is there.
 	//  Consumer must check full/empty status.
 	int16_t pop() {
-		int16_t val = *rdPtr();
+		int16_t val = q[rdEntry];
 
 		if ( count() > 0  ) {
 			// bump and wrap
@@ -145,7 +141,7 @@ public :
 
 	// Look at the head element
 	int16_t peek() {
-		int16_t val = *rdPtr();
+		int16_t val = q[rdEntry];
 		return val;
 	}
 
@@ -191,6 +187,7 @@ public :
 				// We're done with the move at the head of the queue
 				//  pop it and start the next.
 				pop();
+				stepsTaken = 0;
 			}
 
 		}
@@ -211,7 +208,7 @@ extern "C" void mazeMain(void){
 
 	HAL_TIM_Base_Start_IT(&htim14);
 
-	// htim14.Instance->ARR = 15000;
+	htim14.Instance->ARR = 20000-1;
 
 	if ( registers.mode == Mode::PWM ) {
 		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
@@ -220,6 +217,7 @@ extern "C" void mazeMain(void){
 	// Should guard this with interrupt off
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
+	HAL_Delay(1000);
 
 	while(1) {
 
@@ -247,7 +245,7 @@ extern "C" void mazeMain(void){
 						if ( forward ) {
 							xQueue.push(PPR*4);
 						} else {
-							xQueue.push(-PPR*4);
+							xQueue.push(PPR*4);
 						}
 					}
 
