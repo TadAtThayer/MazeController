@@ -294,77 +294,7 @@ extern "C" void mazeMain(void){
 				}
 			}
 		}
-			/*
-		if ( currentXPW != targetXPW ){
-			// figure out how many pulses to issue
-			int increment = 1;
-			int phases = (currentXPW - targetXPW) * PhasePerUSec;
-			if ( phases < 0 ){
-				phases = -phases;
-				increment = -1;
-			}
-			for ( int i = 0; i < phases; i++ ){
-				xQueue.push(xCoils[xQuadrant]);
-				xQuadrant += increment; xQuadrant &= 0x3;
-			}
-			currentXPW = targetXPW;
-		}
-
-		if ( currentYPW != targetYPW ){
-			// figure out how many pulses to issue
-			int increment = 1;
-			int phases = (currentYPW - targetYPW) * PhasePerUSec;
-			if ( phases < 0 ){
-				phases = -phases;
-				increment = -1;
-			}
-			for ( int i = 0; i < phases; i++ ){
-				yQueue.push(xCoils[yQuadrant]);
-				yQuadrant += increment; yQuadrant &= 0x3;
-			}
-			currentYPW = targetYPW;
-		}
-		if ( xCommand ){ // signal from the interrupt handler
-			forward = xStepCount >= 0;
-			if ( forward ){
-				stepCount = xStepCount;
-			} else {
-				stepCount = -xStepCount;
-			}
-			for ( int i = 0; i < stepCount << 2; i++ ){
-				// Add 4 quarter steps per step
-				xQueue.push(xCoils[xQuadrant]);
-				xQuadrant += (forward ? 1 : -1); xQuadrant &= 0x3;
-			}
-			xCommand = false;
-		}
-
-		if ( yCommand ){
-			forward = yStepCount >= 0;
-			if ( forward ) {
-				stepCount = yStepCount;
-			} else {
-				stepCount = -yStepCount;
-			}
-			for ( int i = 0; i < stepCount << 2; i++ ){
-				yQueue.push(xCoils[yQuadrant]);
-				yQuadrant += (forward ? 1 : -1); yQuadrant &= 0x3;
-			}
-			yCommand = false;
-		}
-		*/
 	}
-
-//	while(1){
-//		for ( unsigned i = 0; i < 2032; i++) {
-//			while(xQueue.full()){
-//				HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_SET);
-//			}
-//			//HAL_GPIO_WritePin(Y1_2_GPIO_Port, Y1_2_Pin, GPIO_PinState::GPIO_PIN_RESET);
-//			xQueue.push(activeCoils[i&0x3]);
-//		}
-//		HAL_Delay(5000);
-//	}
 
 }
 
