@@ -48,7 +48,7 @@ extern "C" TIM_HandleTypeDef htim14;
 extern "C" TIM_HandleTypeDef htim16;
 extern "C" I2C_HandleTypeDef hi2c1;
 
-// One step of the motor is 4 phase acitvations.
+// One step of the motor is 4 phase activations.
 //  This sequence does a full step and provides decent torque.
 //
 // These coil activations require that the coils for a particular
@@ -97,7 +97,7 @@ enum class SelfTestResult : uint8_t {
 };
 
 struct {
-	Mode mode = Mode::Test;
+	Mode mode = Mode::StepDir;
 	uint8_t errCount = 0;
 	SelfTestResult selfTest = SelfTestResult::NotRun;
 } registers;
@@ -110,6 +110,8 @@ private:
 	int16_t q[MoveQueue::size];
 	unsigned int wrEntry = 0;
 	unsigned int rdEntry = 0;
+	uint8_t pushErrors = 0;
+	uint8_t popErrors = 0;
 	bool wrapped = false;
 
 public :
@@ -119,9 +121,13 @@ public :
 
 
 	void push( int16_t item ){
-		q[wrEntry++] = item;
-		if ( wrEntry == size ) wrapped = true;
-		wrEntry &= (size - 1);
+		if ( isEmpty() ){
+			q[wrEntry++] = item;
+			if ( wrEntry == size ) wrapped = true;
+			wrEntry &= (size - 1);
+		} else {
+			pushErrors++;
+		}
 	}
 
 	// Pop the top element.
@@ -130,11 +136,15 @@ public :
 	int16_t pop() {
 		int16_t val = q[rdEntry];
 
-		if ( count() > 0  ) {
-			// bump and wrap
-			rdEntry++;
-			if ( rdEntry == size ) wrapped = false;
-			rdEntry &= (size - 1);
+		if ( !isEmpty() ){
+			if ( count() > 0  ) {
+				// bump and wrap
+				rdEntry++;
+				if ( rdEntry == size ) wrapped = false;
+				rdEntry &= (size - 1);
+			}
+		} else {
+			popErrors++;
 		}
 		return val;
 	}
@@ -145,7 +155,9 @@ public :
 		return val;
 	}
 
-
+	uint8_t errCount() {
+		return popErrors + pushErrors;
+	}
 };
 
 class MotorQueue : public MoveQueue {
@@ -166,6 +178,8 @@ public :
 
 	void idle(){
 	}
+
+	bool halfStep() { return !fullStep; }
 
 	void step(void){
 		int incVal = 1;
@@ -192,6 +206,7 @@ public :
 
 		}
 	}
+
 };
 
 MotorQueue xQueue( xCoils, X_0_GPIO_Port, X_MASK );
@@ -221,6 +236,9 @@ extern "C" void mazeMain(void){
 
 	while(1) {
 
+		// Update error counts
+		registers.errCount = xQueue.errCount() + yQueue.errCount() + yPQueue.errCount();
+
 		if ( registers.mode == Mode::Test ) {
 
 				// Do the next tick of self testing.
@@ -245,7 +263,7 @@ extern "C" void mazeMain(void){
 						if ( forward ) {
 							xQueue.push(PPR*4);
 						} else {
-							xQueue.push(PPR*4);
+							xQueue.push(-PPR*4);
 						}
 					}
 
@@ -360,9 +378,9 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 	if ( GPIO_Pin == StepX_Pin && registers.mode == Mode::StepDir ){
 		// Check the direction
 		if ( HAL_GPIO_ReadPin(DirX_GPIO_Port, DirX_Pin) ){
-			//xStepCount = -1;
+			xQueue.push( xQueue.halfStep() ? -8 : -4 );
 		} else {
-			//xStepCount = 1;
+			xQueue.push(xQueue.halfStep() ? 8 : 4 );
 		}
 		xCommand = true;
 	}
