@@ -32,9 +32,6 @@
 volatile bool userPressed = false;
 #endif
 
-volatile bool xCommand = false;
-volatile bool yCommand = false;
-
 // This depends on all X pins being in the same bank.
 #define X_MASK ( X_0_Pin | X_1_Pin | X_2_Pin | X_3_Pin )
 
@@ -117,11 +114,11 @@ private:
 public :
 	bool isEmpty(){ return count() == 0; }
 	unsigned int count(){ return (wrapped ? size : 0 ) + wrEntry - rdEntry; }
-	bool full(){ return count() == size; }
+	bool isFull(){ return count() == size; }
 
 
 	void push( int16_t item ){
-		if ( isEmpty() ){
+		if ( !isFull() ){
 			q[wrEntry++] = item;
 			if ( wrEntry == size ) wrapped = true;
 			wrEntry &= (size - 1);
@@ -223,7 +220,7 @@ extern "C" void mazeMain(void){
 
 	HAL_TIM_Base_Start_IT(&htim14);
 
-	htim14.Instance->ARR = 20000-1;
+	htim14.Instance->ARR = 10000-1;
 
 	if ( registers.mode == Mode::PWM ) {
 		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
@@ -312,20 +309,21 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin){
 		} else {
 			xQueue.push(xQueue.halfStep() ? 8 : 4 );
 		}
-		xCommand = true;
 	}
 
 	if ( GPIO_Pin == StepY_Pin && registers.mode == Mode::StepDir ){
 		if ( HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin) ) {
-			//yStepCount = 1;
+			yQueue.push( yQueue.halfStep() ? -8 : -4 );
+			yPQueue.push( yQueue.halfStep() ? 8 : 4 );
 		} else {
-			//yStepCount = -1;
+			yQueue.push( yQueue.halfStep() ? 8 : 4 );
+			yPQueue.push( yQueue.halfStep() ? -8 : -4 );
 		}
-		yCommand = true;
 	}
 
 }
 
+// PWM mode mostly happens here.
 extern "C" void HAL_TIM_IC_CaptureCallback( TIM_HandleTypeDef *htim ){
 	if ( htim == &htim16 ) {
 		if ( HAL_GPIO_ReadPin(StepX_GPIO_Port, StepX_Pin) == GPIO_PIN_SET) {
