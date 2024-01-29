@@ -159,12 +159,14 @@ public :
 
 class MotorQueue : public MoveQueue {
 private :
+	const uint32_t idleTime = 10000;    // ms.
 	const uint16_t *coilActivations;
 	bool fullStep = true;
 	uint16_t pinMask;
 	GPIO_TypeDef *gpioPort;
 	int stepsTaken = 0;
 	int quadrant = 0;
+	uint32_t lastMoveTime = 0;
 
 public :
 	MotorQueue( const uint16_t *coils, GPIO_TypeDef *port, uint16_t pins ){
@@ -174,6 +176,8 @@ public :
 	}
 
 	void idle(){
+		// Turn the coils off
+		HAL_GPIO_WriteMultipleStatePin(gpioPort, pinMask, 0);
 	}
 
 	bool halfStep() { return !fullStep; }
@@ -182,16 +186,15 @@ public :
 		int incVal = 1;
 
 		if ( !isEmpty() ){
-
+			lastMoveTime = HAL_GetTick();
 			if ( stepsTaken > peek() ) {
 				// We're going backward.
 				incVal = -1;
 			}
 
 			// Drive the motors
-			HAL_GPIO_WriteMultipleStatePin(gpioPort, pinMask, coilActivations[quadrant]);
+			HAL_GPIO_WriteMultipleStatePin(gpioPort, pinMask, coilActivations[quadrant & (fullStep ? 0x3 : 0x7)]);
 			quadrant += incVal;
-			quadrant &= fullStep ? 0x3 : 0x7;
 			stepsTaken += incVal;
 
 			if ( stepsTaken == peek() ){
@@ -201,6 +204,11 @@ public :
 				stepsTaken = 0;
 			}
 
+		} else {
+			if ( HAL_GetTick() - lastMoveTime > idleTime ){
+				lastMoveTime = HAL_GetTick();
+				idle();
+			}
 		}
 	}
 
