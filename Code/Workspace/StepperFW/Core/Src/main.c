@@ -301,14 +301,14 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, X_0_Pin|X_1_Pin|X_2_Pin|X_3_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : StepX_Pin StepY_Pin */
-  GPIO_InitStruct.Pin = StepX_Pin|StepY_Pin;
+  /*Configure GPIO pins : StepY_Pin StepX_Pin */
+  GPIO_InitStruct.Pin = StepY_Pin|StepX_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DirX_Pin DirY_Pin */
-  GPIO_InitStruct.Pin = DirX_Pin|DirY_Pin;
+  /*Configure GPIO pins : DirY_Pin DirX_Pin */
+  GPIO_InitStruct.Pin = DirY_Pin|DirX_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);

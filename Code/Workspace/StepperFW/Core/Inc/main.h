@@ -57,13 +57,13 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define StepX_Pin GPIO_PIN_0
-#define StepX_GPIO_Port GPIOA
-#define StepX_EXTI_IRQn EXTI0_1_IRQn
-#define DirX_Pin GPIO_PIN_1
-#define DirX_GPIO_Port GPIOA
-#define DirY_Pin GPIO_PIN_2
+#define StepY_Pin GPIO_PIN_0
+#define StepY_GPIO_Port GPIOA
+#define StepY_EXTI_IRQn EXTI0_1_IRQn
+#define DirY_Pin GPIO_PIN_1
 #define DirY_GPIO_Port GPIOA
+#define DirX_Pin GPIO_PIN_2
+#define DirX_GPIO_Port GPIOA
 #define Y1_3_Pin GPIO_PIN_3
 #define Y1_3_GPIO_Port GPIOA
 #define Y0_3_Pin GPIO_PIN_4
@@ -80,9 +80,9 @@ void Error_Handler(void);
 #define Y1_0_GPIO_Port GPIOA
 #define Y0_0_Pin GPIO_PIN_12
 #define Y0_0_GPIO_Port GPIOA
-#define StepY_Pin GPIO_PIN_15
-#define StepY_GPIO_Port GPIOA
-#define StepY_EXTI_IRQn EXTI4_15_IRQn
+#define StepX_Pin GPIO_PIN_15
+#define StepX_GPIO_Port GPIOA
+#define StepX_EXTI_IRQn EXTI4_15_IRQn
 #define X_0_Pin GPIO_PIN_4
 #define X_0_GPIO_Port GPIOB
 #define X_1_Pin GPIO_PIN_5
