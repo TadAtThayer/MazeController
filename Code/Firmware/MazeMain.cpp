@@ -36,11 +36,13 @@ volatile bool userPressed = false;
 // This depends on all Y pins being in the same bank.
 #define Y0_MASK (Y0_0_Pin | Y0_1_Pin | Y0_2_Pin | Y0_3_Pin)
 #define Y1_MASK (Y1_0_Pin | Y1_1_Pin | Y1_2_Pin | Y1_3_Pin)
+#define Y_MASK (Y0_MASK | Y1_MASK)
 
 // Declared in main.c
 extern "C" TIM_HandleTypeDef htim14;
 extern "C" TIM_HandleTypeDef htim16;
 extern "C" I2C_HandleTypeDef hi2c1;
+extern "C" void restoreGPIO( void );
 
 // One step of the motor is 4 phase activations.
 //  This sequence does a full step and provides decent torque.
@@ -86,11 +88,20 @@ enum class SelfTestResult : uint8_t {
 	Fail = 0, Pass = 1, NotRun
 };
 
+// Define some bits for the failure code.
+#define FAILCODE_NONE 0x0
+#define FAILCODE_PIN  0x1
+#define FAILCODE_I2CH 0x2   // Host transaction failure
+
+
 struct {
-	Mode mode = Mode::StepDir;
+	Mode mode = Mode::Test;
 	uint8_t errCount = 0;
 	SelfTestResult selfTest = SelfTestResult::NotRun;
+	uint16_t failCode = 0;
 	uint16_t offTime = 5000;  // ms
+	uint16_t xPins = 0;
+	uint16_t yPins = 0;
 } registers;
 
 class MoveQueue {
@@ -222,6 +233,8 @@ MotorQueue xQueue(xCoils, X_0_GPIO_Port, X_MASK, false);
 MotorQueue yQueue(y0Coils, Y0_0_GPIO_Port, Y0_MASK, false);
 MotorQueue yPQueue(y1Coils, Y1_0_GPIO_Port, Y1_MASK, false);
 
+void testPins( GPIO_TypeDef *port, uint16_t pins, uint16_t *record );
+
 extern "C" void mazeMain(void) {
 
 	uint32_t now = HAL_GetTick();
@@ -245,29 +258,41 @@ extern "C" void mazeMain(void) {
 	//HAL_Delay(1000);
 
 	while (1) {
+		uint8_t TxBuf = 0x21;  // Magic!  Turn the oscillator on
+		const uint8_t displayAddr = 0x70 << 1;
+		HAL_StatusTypeDef ret;
 
 		// Update error counts
 		registers.errCount = xQueue.errCount() + yQueue.errCount()
 				+ yPQueue.errCount();
 
-		if (registers.mode == Mode::Test) {
+		if (registers.mode == Mode::Test && registers.selfTest == SelfTestResult::NotRun) {
 
-			// Do the next tick of self testing.
+			// Assume we pass
+			registers.selfTest = SelfTestResult::Pass;
 
-			// What we should do.
+			registers.yPins = 0;
+			registers.xPins = 0;
 
-			// This test is basically to make sure there are no bridging faults
-			// around the processor.
-			//
-			// Make all the pins input with weak pulldown.  Drive a each pin high in
-			// succession, reading and confirming between each pass.
-			//
-			// Go the other way.  Weak pullup, drive low.  Check.
-			//
-			// Return to default.
+			testPins( Y0_0_GPIO_Port, Y_MASK, &registers.yPins);
+			testPins( X_0_GPIO_Port, X_MASK, &registers.xPins);
+
+			if ( registers.xPins != X_MASK ){
+				registers.selfTest = SelfTestResult::Fail;
+				registers.failCode |= FAILCODE_PIN;
+			}
+			// Put the pins back the way they are supposed to be
+			restoreGPIO();
+
+			// See if we can write to the display
+//			ret = HAL_I2C_Master_Transmit(&hi2c1, displayAddr, &TxBuf, 1, 1000);
+//			if ( ret != HAL_StatusTypeDef::HAL_OK ){
+//				registers.failCode |= FAILCODE_I2CH;
+//				registers.selfTest = SelfTestResult::Fail;
+//			}
 
 			// What we're actually doing
-			if (xQueue.isEmpty() && yQueue.isEmpty() && yPQueue.isEmpty()) {
+			if (false && xQueue.isEmpty() && yQueue.isEmpty() && yPQueue.isEmpty()) {
 				if (!selfTestComplete) {
 					if (n == 0) {
 						n++;
@@ -304,6 +329,8 @@ extern "C" void mazeMain(void) {
 					HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port,
 					Y0_MASK | Y1_MASK, 0);
 				}
+				HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, 0);
+				HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port, Y_MASK, 0);
 			}
 		}
 
@@ -325,6 +352,51 @@ extern "C" void mazeMain(void) {
 		}
 	}
 
+}
+
+void testPins( GPIO_TypeDef *port, uint16_t pinMask, uint16_t *record ){
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	uint16_t currPin = 0x1;
+
+	// What we should do.
+
+	// This test is basically to make sure there are no bridging faults
+	// around the processor.
+	//
+	// Make all the pins input with weak pulldown.  Drive a each pin high in
+	// succession, reading and confirming between each pass.
+	//
+	// Go the other way.  Weak pullup, drive low.  Check.
+
+	// Start with the Y1 and Y0 pins.
+	GPIO_InitStruct.Pin = pinMask;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(port, &GPIO_InitStruct);
+	HAL_Delay(100);
+	if ( (port->IDR & pinMask) != 0 ) {
+		*record = ~0;
+	} else {
+
+		do {
+			while ( currPin != 0 && (currPin & Y_MASK) == 0 ){ currPin <<= 1; }
+			GPIO_InitStruct.Pin = currPin;
+			GPIO_InitStruct.Pull = GPIO_PULLUP;
+			HAL_GPIO_Init(port, &GPIO_InitStruct);
+			HAL_Delay(100);
+			if ((port->IDR & pinMask) == currPin ) {
+				*record |= currPin;
+			}
+
+			// Put it back
+			GPIO_InitStruct.Pin = currPin;
+			GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+			HAL_GPIO_Init(port, &GPIO_InitStruct);
+			HAL_Delay(100);
+			currPin <<=1;
+
+		} while ( currPin );
+	}
 }
 
 extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
@@ -391,6 +463,8 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 extern "C" void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c) {
 	HAL_I2C_EnableListen_IT(&hi2c1);
 }
+
+
 
 //--------- Documentation ------------------
 //
