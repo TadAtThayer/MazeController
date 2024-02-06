@@ -65,6 +65,8 @@ void restoreGPIO(void);
 /* USER CODE BEGIN 0 */
 void restoreGPIO( void ){
 	MX_GPIO_Init();
+	HAL_I2C_DeInit(&hi2c1);
+	MX_I2C1_Init();
 }
 /* USER CODE END 0 */
 
