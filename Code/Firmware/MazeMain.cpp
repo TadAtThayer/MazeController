@@ -285,11 +285,12 @@ extern "C" void mazeMain(void) {
 			restoreGPIO();
 
 			// See if we can write to the display
-//			ret = HAL_I2C_Master_Transmit(&hi2c1, displayAddr, &TxBuf, 1, 1000);
-//			if ( ret != HAL_StatusTypeDef::HAL_OK ){
-//				registers.failCode |= FAILCODE_I2CH;
-//				registers.selfTest = SelfTestResult::Fail;
-//			}
+			ret = HAL_I2C_Master_Transmit(&hi2c1, displayAddr, &TxBuf, 1, 1000);
+			if ( ret != HAL_StatusTypeDef::HAL_OK ){
+				registers.failCode |= FAILCODE_I2CH;
+				registers.selfTest = SelfTestResult::Fail;
+			}
+			restoreGPIO();
 
 			// What we're actually doing
 			if (false && xQueue.isEmpty() && yQueue.isEmpty() && yPQueue.isEmpty()) {
