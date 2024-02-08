@@ -8,6 +8,11 @@
 #include <stdint.h>
 #include <assert.h>
 
+#include "Registers.h"
+#include "MoveQueue.h"
+#include "MotorQueue.h"
+#include "HT16K33.h"
+
 // These motors (28BYJ-48) are supposedly 32 steps per revolution followed by
 //  a 64:1 gearbox.  So, effectively 2048 full steps.  My experiments indicate
 //  it is actually 512
@@ -43,6 +48,10 @@ extern "C" TIM_HandleTypeDef htim14;
 extern "C" TIM_HandleTypeDef htim16;
 extern "C" I2C_HandleTypeDef hi2c1;
 extern "C" void restoreGPIO( void );
+
+// Global instance of our registers.
+//
+// Made global so the I2C interrupts and DMA can see it.
 
 // One step of the motor is 4 phase activations.
 //  This sequence does a full step and provides decent torque.
@@ -80,160 +89,15 @@ const uint16_t y1Coils[] = { (Y1_0_Pin), // | (Y1_1_Pin),
 // 0x3 for full step or 0x7 for 1/2 step.
 #define PhaseMask 0x3
 
-enum class Mode : uint8_t {
-	StepDir = 0, PWM = 1, Test = 2, Calibrate
-};
 
-enum class SelfTestResult : uint8_t {
-	Fail = 0, Pass = 1, NotRun
-};
-
-// Define some bits for the failure code.
-#define FAILCODE_NONE 0x0
-#define FAILCODE_PIN  0x1
-#define FAILCODE_I2CH 0x2   // Host transaction failure
-
-
-struct {
-	Mode mode = Mode::Test;
-	uint8_t errCount = 0;
-	SelfTestResult selfTest = SelfTestResult::NotRun;
-	uint16_t failCode = 0;
-	uint16_t offTime = 5000;  // ms
-	uint16_t xPins = 0;
-	uint16_t yPins = 0;
-} registers;
-
-class MoveQueue {
-public:
-	static const unsigned int size = 128;
-private:
-	int16_t q[MoveQueue::size];
-	unsigned int wrEntry = 0;
-	unsigned int rdEntry = 0;
-	uint8_t pushErrors = 0;
-	uint8_t popErrors = 0;
-	bool wrapped = false;
-
-public:
-	bool isEmpty() {
-		return count() == 0;
-	}
-	unsigned int count() {
-		return (wrapped ? size : 0) + wrEntry - rdEntry;
-	}
-	bool isFull() {
-		return count() == size;
-	}
-
-	void push(int16_t item) {
-		if (!isFull()) {
-			q[wrEntry++] = item;
-			if (wrEntry == size)
-				wrapped = true;
-			wrEntry &= (size - 1);
-		} else {
-			pushErrors++;
-		}
-	}
-
-	// Pop the top element.
-	//  If we are empty, just return whatever is there.
-	//  Consumer must check full/empty status.
-	int16_t pop() {
-		int16_t val = q[rdEntry];
-
-		if (!isEmpty()) {
-			if (count() > 0) {
-				// bump and wrap
-				rdEntry++;
-				if (rdEntry == size)
-					wrapped = false;
-				rdEntry &= (size - 1);
-			}
-		} else {
-			popErrors++;
-		}
-		return val;
-	}
-
-	// Look at the head element
-	int16_t peek() {
-		int16_t val = q[rdEntry];
-		return val;
-	}
-
-	uint8_t errCount() {
-		return popErrors + pushErrors;
-	}
-};
-
-class MotorQueue: public MoveQueue {
-private:
-	const uint16_t *coilActivations;
-	bool fullStep = true;
-	uint16_t pinMask;
-	GPIO_TypeDef *gpioPort;
-	int stepsTaken = 0;
-	int quadrant = 0;
-	uint32_t lastMoveTime = 0;
-
-public:
-	MotorQueue(const uint16_t *coils, GPIO_TypeDef *port, uint16_t pins,
-			bool fs = true) {
-		coilActivations = coils;
-		pinMask = pins;
-		gpioPort = port;
-		fullStep = fs;
-	}
-
-	void idle() {
-		// Turn the coils off
-		HAL_GPIO_WriteMultipleStatePin(gpioPort, pinMask, 0);
-	}
-
-	bool halfStep() {
-		return !fullStep;
-	}
-
-	void step(void) {
-		int incVal = 1;
-
-		if (!isEmpty()) {
-			lastMoveTime = HAL_GetTick();
-			if (stepsTaken > peek()) {
-				// We're going backward.
-				incVal = -1;
-			}
-
-			// Drive the motors
-			HAL_GPIO_WriteMultipleStatePin(gpioPort, pinMask,
-					coilActivations[quadrant & (fullStep ? 0x3 : 0x7)]);
-			quadrant += incVal;
-			stepsTaken += incVal;
-
-			if (stepsTaken == peek()) {
-				// We're done with the move at the head of the queue
-				//  pop it and start the next.
-				pop();
-				stepsTaken = 0;
-			}
-
-		} else {
-			if (HAL_GetTick() - lastMoveTime > registers.offTime) {
-				lastMoveTime = HAL_GetTick();
-				idle();
-			}
-		}
-	}
-
-};
 
 MotorQueue xQueue(xCoils, X_0_GPIO_Port, X_MASK, false);
 MotorQueue yQueue(y0Coils, Y0_0_GPIO_Port, Y0_MASK, false);
 MotorQueue yPQueue(y1Coils, Y1_0_GPIO_Port, Y1_MASK, false);
 
 void testPins( GPIO_TypeDef *port, uint16_t pins, uint16_t *record );
+
+Registers *registers = &SystemRegisters;
 
 extern "C" void mazeMain(void) {
 
@@ -248,7 +112,7 @@ extern "C" void mazeMain(void) {
 
 	htim14.Instance->ARR = 10000 - 1;
 
-	if (registers.mode == Mode::PWM) {
+	if (registers->mode == Registers::Mode::PWM) {
 		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
 	}
 
@@ -258,28 +122,30 @@ extern "C" void mazeMain(void) {
 	//HAL_Delay(1000);
 
 	while (1) {
+
 		uint8_t TxBuf = 0x21;  // Magic!  Turn the oscillator on
 		const uint8_t displayAddr = 0x70 << 1;
 		HAL_StatusTypeDef ret;
 
 		// Update error counts
-		registers.errCount = xQueue.errCount() + yQueue.errCount()
+		registers->errCount = xQueue.errCount() + yQueue.errCount()
 				+ yPQueue.errCount();
 
-		if (registers.mode == Mode::Test && registers.selfTest == SelfTestResult::NotRun) {
+		if (registers->mode == Registers::Mode::Test &&
+				registers->selfTest == Registers::SelfTestResult::NotRun) {
 
 			// Assume we pass
-			registers.selfTest = SelfTestResult::Pass;
+			registers->selfTest = Registers::SelfTestResult::Pass;
 
-			registers.yPins = 0;
-			registers.xPins = 0;
+			registers->yPins = 0;
+			registers->xPins = 0;
 
-			testPins( Y0_0_GPIO_Port, Y_MASK, &registers.yPins);
-			testPins( X_0_GPIO_Port, X_MASK, &registers.xPins);
+			testPins( Y0_0_GPIO_Port, Y_MASK, &registers->yPins);
+			testPins( X_0_GPIO_Port, X_MASK, &registers->xPins);
 
-			if ( registers.xPins != X_MASK ){
-				registers.selfTest = SelfTestResult::Fail;
-				registers.failCode |= FAILCODE_PIN;
+			if ( registers->xPins != X_MASK ){
+				registers->selfTest = Registers::SelfTestResult::Fail;
+				registers->failCode |= FAILCODE_PIN;
 			}
 			// Put the pins back the way they are supposed to be
 			restoreGPIO();
@@ -287,10 +153,21 @@ extern "C" void mazeMain(void) {
 			// See if we can write to the display
 			ret = HAL_I2C_Master_Transmit(&hi2c1, displayAddr, &TxBuf, 1, 1000);
 			if ( ret != HAL_StatusTypeDef::HAL_OK ){
-				registers.failCode |= FAILCODE_I2CH;
-				registers.selfTest = SelfTestResult::Fail;
+				registers->failCode |= FAILCODE_I2CH;
+				registers->selfTest = Registers::SelfTestResult::Fail;
 			}
 			restoreGPIO();
+
+			if ( registers->selfTest == Registers::SelfTestResult::Pass) {
+				bool worked = true;
+				HT16K33 display( &hi2c1 );
+				worked = display.turnOn(15);
+				worked = worked && display.pass();
+				if ( !worked ){
+					registers->failCode = FAILCODE_DISP;
+					registers->selfTest = Registers::SelfTestResult::Fail;
+				}
+			}
 
 			// What we're actually doing
 			if (false && xQueue.isEmpty() && yQueue.isEmpty() && yPQueue.isEmpty()) {
@@ -335,7 +212,7 @@ extern "C" void mazeMain(void) {
 			}
 		}
 
-		if (registers.mode == Mode::Calibrate) {
+		if (registers->mode == Registers::Mode::Calibrate) {
 			if (HAL_GetTick() > now + 10000) {
 				if (yQueue.isEmpty()) {
 					HAL_TIM_Base_Stop_IT(&htim14);
@@ -406,7 +283,7 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 	if ( GPIO_Pin == User_Button_Pin ) userPressed = true;
 #endif
 
-	if (GPIO_Pin == StepX_Pin && registers.mode == Mode::StepDir) {
+	if (GPIO_Pin == StepX_Pin && registers->mode == Registers::Mode::StepDir) {
 		// Check the direction
 		if (HAL_GPIO_ReadPin(DirX_GPIO_Port, DirX_Pin) == GPIO_PinState::GPIO_PIN_RESET) {
 			xQueue.push(xQueue.halfStep() ? 4 : 2);
@@ -415,7 +292,7 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 		}
 	}
 
-	if (GPIO_Pin == StepY_Pin && registers.mode == Mode::StepDir) {
+	if (GPIO_Pin == StepY_Pin && registers->mode == Registers::Mode::StepDir) {
 
 		if (HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin) == GPIO_PinState::GPIO_PIN_RESET) {
 			yQueue.push(yQueue.halfStep() ? 4 : 2);
@@ -426,7 +303,7 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 		}
 	}
 
-	if (GPIO_Pin == StepY_Pin && registers.mode == Mode::Calibrate) {
+	if (GPIO_Pin == StepY_Pin && registers->mode == Registers::Mode::Calibrate) {
 		if (HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin)) {
 			yQueue.push(1);
 		} else {
