@@ -19,7 +19,7 @@ private :
 public:
 
 
-	HT16K33(I2C_HandleTypeDef *bus, uint8_t shiftedAddress = 0x70 );
+	HT16K33(I2C_HandleTypeDef *bus, uint8_t shiftedAddress = 0x70<<1 );
 	virtual ~HT16K33();
 
 	bool turnOn( uint8_t brightness = 8);

@@ -108,6 +108,9 @@ extern "C" void mazeMain(void) {
 
 	int n = 0;
 
+	HT16K33 display(&hi2c1);
+
+
 	HAL_TIM_Base_Start_IT(&htim14);
 
 	htim14.Instance->ARR = 10000 - 1;
@@ -143,14 +146,14 @@ extern "C" void mazeMain(void) {
 			testPins( Y0_0_GPIO_Port, Y_MASK, &registers->yPins);
 			testPins( X_0_GPIO_Port, X_MASK, &registers->xPins);
 
-			if ( registers->xPins != X_MASK ){
+			if ( registers->xPins != X_MASK || registers->yPins != Y_MASK){
 				registers->selfTest = Registers::SelfTestResult::Fail;
 				registers->failCode |= FAILCODE_PIN;
 			}
 			// Put the pins back the way they are supposed to be
 			restoreGPIO();
 
-			// See if we can write to the display
+			TxBuf &= ~0x1;
 			ret = HAL_I2C_Master_Transmit(&hi2c1, displayAddr, &TxBuf, 1, 1000);
 			if ( ret != HAL_StatusTypeDef::HAL_OK ){
 				registers->failCode |= FAILCODE_I2CH;
@@ -160,12 +163,13 @@ extern "C" void mazeMain(void) {
 
 			if ( registers->selfTest == Registers::SelfTestResult::Pass) {
 				bool worked = true;
-				HT16K33 display( &hi2c1 );
 				worked = display.turnOn(15);
 				worked = worked && display.pass();
 				if ( !worked ){
 					registers->failCode = FAILCODE_DISP;
 					registers->selfTest = Registers::SelfTestResult::Fail;
+					// This might not work, but might as well try.
+					display.fail();
 				}
 			}
 
@@ -211,6 +215,7 @@ extern "C" void mazeMain(void) {
 				HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port, Y_MASK, 0);
 			}
 		}
+
 
 		if (registers->mode == Registers::Mode::Calibrate) {
 			if (HAL_GetTick() > now + 10000) {
