@@ -101,8 +101,6 @@ Registers *registers = &SystemRegisters;
 
 extern "C" void mazeMain(void) {
 
-	uint32_t now = HAL_GetTick();
-
 	bool selfTestComplete = false;
 	bool forward = true;
 
@@ -171,6 +169,9 @@ extern "C" void mazeMain(void) {
 					// This might not work, but might as well try.
 					display.fail();
 				}
+			} else {
+				display.turnOn();
+				display.fail();
 			}
 
 			// What we're actually doing
@@ -216,23 +217,6 @@ extern "C" void mazeMain(void) {
 			}
 		}
 
-
-		if (registers->mode == Registers::Mode::Calibrate) {
-			if (HAL_GetTick() > now + 10000) {
-				if (yQueue.isEmpty()) {
-					HAL_TIM_Base_Stop_IT(&htim14);
-					xQueue.idle();
-					yQueue.idle();
-					yPQueue.idle();
-					HAL_Delay(1000);
-					yQueue.push(4 * 2048);
-					yPQueue.push(-4 * 2048);
-					HAL_TIM_Base_Start_IT(&htim14);
-				} else {
-					now = HAL_GetTick();
-				}
-			}
-		}
 	}
 
 }
@@ -297,6 +281,17 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 		}
 	}
 
+	if (GPIO_Pin == StepX_Pin && registers->mode == Registers::Mode::Calibrate) {
+		// Check the direction
+		if (HAL_GPIO_ReadPin(DirX_GPIO_Port, DirX_Pin) == GPIO_PinState::GPIO_PIN_RESET) {
+			xQueue.push(xQueue.halfStep() ? 4 : 2);
+		} else {
+			xQueue.push(xQueue.halfStep() ? -4 : -2);
+		}
+	}
+
+
+
 	if (GPIO_Pin == StepY_Pin && registers->mode == Registers::Mode::StepDir) {
 
 		if (HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin) == GPIO_PinState::GPIO_PIN_RESET) {
@@ -310,9 +305,9 @@ extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 
 	if (GPIO_Pin == StepY_Pin && registers->mode == Registers::Mode::Calibrate) {
 		if (HAL_GPIO_ReadPin(DirY_GPIO_Port, DirY_Pin)) {
-			yQueue.push(1);
+			yQueue.push(4);
 		} else {
-			yPQueue.push(1);
+			yPQueue.push(4);
 		}
 	}
 }

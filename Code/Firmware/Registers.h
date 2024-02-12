@@ -28,7 +28,7 @@ public:
 		StepDir = 0, PWM = 1, Test = 2, Calibrate
 	};
 
-	Mode mode = Mode::Test;
+	Mode mode = Mode::Calibrate;
 	uint8_t errCount = 0;
 	SelfTestResult selfTest = SelfTestResult::NotRun;
 	uint16_t failCode = 0;
