@@ -36,5 +36,10 @@
 			<type>2</type>
 			<locationURI>PARENT-1-WORKSPACE_LOC/Firmware</locationURI>
 		</link>
+		<link>
+			<name>Generated</name>
+			<type>2</type>
+			<location>/Users/d66317d/Code/Boards/MazeController/Code/Gen</location>
+		</link>
 	</linkedResources>
 </projectDescription>

@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 
+#include "gitver.h"
+
 // Define some bits for the failure code.
 #define FAILCODE_NONE 0x0
 #define FAILCODE_PIN  0x1
@@ -28,6 +30,9 @@ public:
 		StepDir = 0, PWM = 1, Test = 2, Calibrate
 	};
 
+	uint8_t major = 0;
+	uint8_t minor = 0;
+	uint16_t gitver = GITVER;
 	Mode mode = Mode::Calibrate;
 	uint8_t errCount = 0;
 	SelfTestResult selfTest = SelfTestResult::NotRun;
