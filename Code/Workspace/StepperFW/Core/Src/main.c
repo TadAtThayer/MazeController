@@ -54,8 +54,8 @@ TIM_HandleTypeDef htim16;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM14_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_TIM16_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 void mazeMain(void);
 void restoreGPIO(void);
@@ -99,8 +99,8 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM14_Init();
-  MX_I2C1_Init();
   MX_TIM16_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   mazeMain();
   /* USER CODE END 2 */
@@ -177,7 +177,7 @@ static void MX_I2C1_Init(void)
   hi2c1.Init.OwnAddress2 = 0;
   hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_ENABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
     Error_Handler();

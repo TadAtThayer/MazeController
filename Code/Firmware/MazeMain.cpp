@@ -31,10 +31,6 @@
 // (2048 phases/ 360 degrees) * (180 degrees / 1000 usec) = 1 phase per usec.
 #define PhasePerUSec 1
 
-#ifndef CONNECTORBOARD
-volatile bool userPressed = false;
-#endif
-
 // This depends on all X pins being in the same bank.
 #define X_MASK ( X_0_Pin | X_1_Pin | X_2_Pin | X_3_Pin )
 
@@ -99,6 +95,11 @@ void testPins( GPIO_TypeDef *port, uint16_t pins, uint16_t *record );
 
 Registers *registers = &SystemRegisters;
 
+volatile uint8_t regAddr = 0xff;
+__IO uint8_t rxDone = 0;
+__IO uint8_t txDone = 0;
+
+
 extern "C" void mazeMain(void) {
 
 	bool selfTestComplete = false;
@@ -117,12 +118,15 @@ extern "C" void mazeMain(void) {
 		HAL_TIM_IC_Start_IT(&htim16, TIM_CHANNEL_1);
 	}
 
-	// Should guard this with interrupt off
 	HAL_I2C_EnableListen_IT(&hi2c1);
 
-	//HAL_Delay(1000);
-
 	while (1) {
+
+		if ( rxDone || txDone ) {
+			HAL_I2C_EnableListen_IT(&hi2c1);
+			rxDone = 0;
+			txDone = 0;
+		}
 
 		uint8_t TxBuf = 0x21;  // Magic!  Turn the oscillator on
 		const uint8_t displayAddr = 0x70 << 1;
@@ -268,10 +272,6 @@ void testPins( GPIO_TypeDef *port, uint16_t pinMask, uint16_t *record ){
 
 extern "C" void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 
-#ifndef CONNECTORBOARD
-	if ( GPIO_Pin == User_Button_Pin ) userPressed = true;
-#endif
-
 	if (GPIO_Pin == StepX_Pin && registers->mode == Registers::Mode::StepDir) {
 		// Check the direction
 		if (HAL_GPIO_ReadPin(DirX_GPIO_Port, DirX_Pin) == GPIO_PinState::GPIO_PIN_RESET) {
@@ -338,23 +338,52 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	}
 }
 
-extern "C" void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c) {
-	HAL_I2C_EnableListen_IT(&hi2c1);
+void do_nothing(void){
+	while(1);
 }
 
+uint8_t rxBuffer[sizeof(Registers)] = {0};
+uint8_t *txBuffer = (uint8_t *)registers;
 
+extern "C" void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){
+	if ( TransferDirection == I2C_DIRECTION_TRANSMIT ){
+		HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, rxBuffer, 1, I2C_FIRST_AND_LAST_FRAME);
+	} else {
+		HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, txBuffer, 1, I2C_FIRST_AND_LAST_FRAME);
+	}
+}
 
-//--------- Documentation ------------------
-//
-// Basic timer setup.  This updates the stepper at 625Hz.
-//
-//htim14.Instance = TIM14;
-//htim14.Init.Prescaler = 2-1;
-//htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-//htim14.Init.Period = 38400-1;
-//htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-//htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-//if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
-//{
-//  Error_Handler();
+extern "C" void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c){
+	do_nothing();
+}
+
+extern "C" void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c){
+	do_nothing();
+}
+
+extern "C" void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c){
+	txDone = 1;
+}
+
+extern "C" void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c){
+	rxDone = 1;
+}
+
+//extern "C" void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c){
+//	do_nothing();
 //}
+
+extern "C" void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c){
+	do_nothing();
+}
+
+extern "C" void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c){
+	do_nothing();
+}
+
+extern "C" void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef *hi2c){
+	do_nothing();
+}
+
+// look at https://community.st.com/t5/stm32-mcus/how-to-create-an-i2c-slave-device-using-the-stm32cube-library/ta-p/49844
+

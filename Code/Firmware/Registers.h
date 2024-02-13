@@ -33,8 +33,10 @@ public:
 	uint8_t major = 0;
 	uint8_t minor = 0;
 	uint16_t gitver = GITVER;
-	Mode mode = Mode::Calibrate;
+	uint8_t gitdirty = GITDIRTY;
 	uint8_t errCount = 0;
+
+	Mode mode = Mode::StepDir;
 	SelfTestResult selfTest = SelfTestResult::NotRun;
 	uint16_t failCode = 0;
 	uint16_t offTime = 5000;  // ms

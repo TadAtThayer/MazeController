@@ -1,0 +1,6 @@
+#!/bin/bash
+
+git status | grep -q "working tree clean" || echo "#define GITDIRTY 1" > Gen/gitver.h
+git status | grep -q "working tree clean" && echo "#define GITDIRTY 0" > Gen/gitver.h
+
+git log | grep commit | head -1 | sed 's/.* \(....\).*/#define GITVER 0x\1/' >> Gen/gitver.h
