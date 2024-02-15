@@ -96,8 +96,8 @@ void testPins( GPIO_TypeDef *port, uint16_t pins, uint16_t *record );
 Registers *registers = &SystemRegisters;
 
 volatile uint8_t regAddr = 0xff;
-__IO uint8_t rxDone = 0;
-__IO uint8_t txDone = 0;
+volatile uint8_t rxDone = 0;
+volatile uint8_t txDone = 0;
 
 
 extern "C" void mazeMain(void) {
@@ -347,9 +347,11 @@ uint8_t *txBuffer = (uint8_t *)registers;
 
 extern "C" void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){
 	if ( TransferDirection == I2C_DIRECTION_TRANSMIT ){
-		HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, rxBuffer, 1, I2C_FIRST_AND_LAST_FRAME);
+		HAL_I2C_Slave_Seq_Receive_IT(&hi2c1, rxBuffer, sizeof(Registers), I2C_FIRST_AND_LAST_FRAME);
 	} else {
-		HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, txBuffer, 1, I2C_FIRST_AND_LAST_FRAME);
+		uint8_t addr = rxBuffer[0];
+		uint8_t len = sizeof(Registers) - addr;
+		HAL_I2C_Slave_Seq_Transmit_IT(&hi2c1, &(txBuffer[addr]), len, I2C_FIRST_AND_LAST_FRAME);
 	}
 }
 
