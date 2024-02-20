@@ -102,11 +102,6 @@ volatile uint8_t txDone = 0;
 
 extern "C" void mazeMain(void) {
 
-	bool selfTestComplete = false;
-	bool forward = true;
-
-	int n = 0;
-
 	HT16K33 display(&hi2c1);
 
 
@@ -138,6 +133,9 @@ extern "C" void mazeMain(void) {
 
 		if (registers->mode == Registers::Mode::Test &&
 				registers->selfTest == Registers::SelfTestResult::NotRun) {
+
+			HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, 0);
+			HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port, Y_MASK, 0);
 
 			// Assume we pass
 			registers->selfTest = Registers::SelfTestResult::Pass;
@@ -178,47 +176,15 @@ extern "C" void mazeMain(void) {
 				display.fail();
 			}
 
-			// What we're actually doing
-			if (false && xQueue.isEmpty() && yQueue.isEmpty() && yPQueue.isEmpty()) {
-				if (!selfTestComplete) {
-					if (n == 0) {
-						n++;
-						if (forward) {
-							xQueue.push(PPR * 4);
-						} else {
-							xQueue.push(-PPR * 4);
-						}
-					}
+			HAL_Delay(1000);
+			display.displayHex(registers->gitver);
 
-					else if (n == 1) {
-						n++;
-						if (forward) {
-							yQueue.push(PPR * 4);
-						} else {
-							yQueue.push(-PPR * 4);
-						}
-					}
+			HAL_Delay(1000);
+			display.turnOff();
 
-					else if (n == 2) {
-						n = 0;
-
-						if (forward) {
-							forward = !forward;
-							yPQueue.push(PPR * 4);
-						} else {
-							yPQueue.push(-PPR * 4);
-							selfTestComplete = true;
-						}
-					}
-
-				} else {
-					HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, 0);
-					HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port,
-					Y0_MASK | Y1_MASK, 0);
-				}
-				HAL_GPIO_WriteMultipleStatePin(X_0_GPIO_Port, X_MASK, 0);
-				HAL_GPIO_WriteMultipleStatePin(Y0_0_GPIO_Port, Y_MASK, 0);
-			}
+			registers->mode = Registers::Mode::StepDir;
+			restoreGPIO();
+			HAL_I2C_EnableListen_IT(&hi2c1);
 		}
 
 	}
@@ -343,6 +309,7 @@ void do_nothing(void){
 }
 
 uint8_t rxBuffer[sizeof(Registers)] = {0};
+uint8_t regNum;
 uint8_t *txBuffer = (uint8_t *)registers;
 
 extern "C" void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode){

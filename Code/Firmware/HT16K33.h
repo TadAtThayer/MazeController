@@ -13,11 +13,16 @@
 
 class HT16K33 {
 private :
+
+	static uint16_t numberTable[16];
+
 	I2C_HandleTypeDef *_i2c_bus;
 	uint8_t _shiftedAddress;
 	uint16_t displayBuf[5] = {0};
-public:
 
+	bool showBuf( void );
+
+public:
 
 	HT16K33(I2C_HandleTypeDef *bus, uint8_t shiftedAddress = 0x70<<1 );
 	virtual ~HT16K33();
@@ -27,6 +32,9 @@ public:
 
 	bool pass( void );
 	bool fail( void );
+
+	bool displayNum( uint8_t nums[4] );
+	bool displayHex( uint16_t num );
 
 };
 

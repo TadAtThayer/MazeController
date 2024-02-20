@@ -36,7 +36,7 @@ public:
 	uint8_t gitdirty = GITDIRTY;
 	uint8_t errCount = 0;
 
-	Mode mode = Mode::StepDir;
+	Mode mode = Mode::Test;
 	SelfTestResult selfTest = SelfTestResult::NotRun;
 	uint16_t failCode = 0;
 	uint16_t offTime = 5000;  // ms
