@@ -217,15 +217,23 @@ void testPins( GPIO_TypeDef *port, uint16_t pinMask, uint16_t *record ){
 
 		do {
 			while ( currPin != 0 && (currPin & Y_MASK) == 0 ){ currPin <<= 1; }
+
+			// Make the current pin an output and try to drive it high.
 			GPIO_InitStruct.Pin = currPin;
-			GPIO_InitStruct.Pull = GPIO_PULLUP;
+			GPIO_InitStruct.Pull = GPIO_NOPULL;
+			GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+			GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 			HAL_GPIO_Init(port, &GPIO_InitStruct);
-			HAL_Delay(100);
+			HAL_GPIO_WritePin(port, currPin, GPIO_PIN_SET);
+
+			HAL_Delay(10);
 			if ((port->IDR & pinMask) == currPin ) {
 				*record |= currPin;
 			}
 
 			// Put it back
+			HAL_GPIO_WritePin(port, currPin, GPIO_PIN_RESET);
+			HAL_Delay(10);
 			GPIO_InitStruct.Pin = currPin;
 			GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 			HAL_GPIO_Init(port, &GPIO_InitStruct);
