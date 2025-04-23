@@ -1,0 +1,7 @@
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.cpp:13:6:bool MoveQueue::isEmpty()	1
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.cpp:18:15:unsigned int MoveQueue::count()	2
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.cpp:22:7:bool MoveQueue::isFull()	1
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.cpp:26:7:void MoveQueue::push(int16_t)	3
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.cpp:40:10:int16_t MoveQueue::pop()	4
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.cpp:58:10:int16_t MoveQueue::peek()	1
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.cpp:63:10:uint8_t MoveQueue::errCount()	1

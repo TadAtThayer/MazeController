@@ -1,0 +1,13 @@
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:23:17:void mazeMain()	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:45:17:void I2C1_IRQHandler()	8	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:54:6:void do_nothing()	8	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:62:17:void HAL_I2C_AddrCallback(I2C_HandleTypeDef*, uint8_t, uint16_t)	24	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:72:17:void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef*)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:76:17:void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef*)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:80:17:void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef*)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:84:17:void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef*)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:92:17:void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef*)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:96:17:void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef*)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:100:17:void HAL_I2C_AbortCpltCallback(I2C_HandleTypeDef*)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:102:1:void __static_initialization_and_destruction_0(int, int)	16	static
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/OwnAddr.cpp:102:1:cpp)	8	static

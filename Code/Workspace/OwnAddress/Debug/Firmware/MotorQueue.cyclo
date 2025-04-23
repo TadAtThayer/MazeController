@@ -1,0 +1,5 @@
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MoveQueue.h:13:7:MoveQueue::MoveQueue()	1
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MotorQueue.cpp:13:2:MotorQueue::MotorQueue(const uint16_t*, GPIO_TypeDef*, uint16_t, bool)	1
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MotorQueue.cpp:20:7:void MotorQueue::idle()	1
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MotorQueue.cpp:25:7:bool MotorQueue::halfStep()	1
+/Users/d66317d/Code/Boards/MazeController/Code/Firmware/MotorQueue.cpp:29:7:void MotorQueue::step()	7
